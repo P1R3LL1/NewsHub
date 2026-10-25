@@ -220,6 +220,14 @@ let settings = Object.assign({theme:"system", open:"original", hours:24, merge:t
 let sources = store.get("sources", null) || DEFAULT_SOURCES.map(s => ({...s}));
 let dismissed = store.get("dismissed", {});          // link -> Zeitstempel
 let pins = store.get("pins", []);                     // gespeicherte Cluster
+/* Lernprotokoll für spätere Auswertung: was weggewischt (uninteressant) und was gelesen (interessant) wurde */
+let swipeLog = store.get("log:swiped", []), readLog = store.get("log:read", []);
+function logEntry(c){ return {t:c.title, x:(c.teaser || "").slice(0, 200), c:c.cat, s:[...new Set(c.items.map(i => i.name))], n:c.items.length, at:Date.now()}; }
+function saveLogs(){
+  const limit = Date.now() - 180 * 86400e3;
+  swipeLog = swipeLog.filter(e => e.at >= limit).slice(-3000); readLog = readLog.filter(e => e.at >= limit).slice(-3000);
+  store.set("log:swiped", swipeLog); store.set("log:read", readLog);
+}
 let readList = store.get("read", []);                 // angetippte (gelesene) Cluster mit readAt – getrennt von „dismissed“ (weggewischt)
 const readLinks = () => { const s = new Set(); readList.forEach(c => c.items.forEach(i => s.add(i.link))); return s; };
 function saveRead(){
@@ -625,6 +633,9 @@ function renderSettings(status){
       </select></div>
     <div class="row" ${settings.proxy === "custom" ? "" : "hidden"}><input id="customProxy" style="flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px" placeholder="https://mein-proxy.example/?url=" value="${esc(settings.customProxy)}"></div>
   </div></div>
+  <div class="sect"><h3>Lerndaten</h3><div class="group">
+    <div class="row"><div class="lbl">Gesammelt<small>${swipeLog.length} weggewischt · ${readLog.length} gelesen${(swipeLog[0] || readLog[0]) ? " · seit " + new Date(Math.min(...[swipeLog[0], readLog[0]].filter(Boolean).map(e => e.at))).toLocaleDateString("de-DE") : ""}</small></div><button class="btn ghost" id="exportLog">Exportieren</button></div>
+  </div><p class="note">Die App merkt sich Überschrift, Kategorie und Quelle jeder weggewischten und gelesenen Meldung (bis zu 180 Tage). Mit „Exportieren“ teilst du die Daten als Datei, zum Beispiel per Mail oder AirDrop, oder kopierst sie.</p></div>
   <div class="sect"><h3>Zurücksetzen</h3><div class="group">
     <div class="row"><div class="lbl">Ausgeblendete Meldungen<small>${Object.keys(dismissed).length} ausgeblendet</small></div><button class="btn ghost" id="resetDismissed">Wieder zeigen</button></div>
     <div class="row"><div class="lbl">Gelesene Meldungen<small>${readList.length} im Bereich „Gelesen“ · nach 14 Tagen automatisch gelöscht</small></div><button class="btn ghost" id="clearRead">Leeren</button></div>
@@ -656,10 +667,11 @@ function markRead(id, slot){
   if (existing){ existing.readAt = Date.now(); saveRead(); return; }
   const {pinnedAt, ...rest} = c;
   readList.push({...rest, readAt: Date.now()}); saveRead(); store.set("hintSeen", true);
+  const entry = logEntry(c); readLog.push(entry); saveLogs();
   if (state.view !== "feed") return;
   collapse(slot, () => {
     render();
-    toast("Unter „Gelesen“ abgelegt", () => { readList = readList.filter(r => r.id !== id); saveRead(); render(); });
+    toast("Unter „Gelesen“ abgelegt", () => { readList = readList.filter(r => r.id !== id); readLog = readLog.filter(e => e !== entry); saveRead(); saveLogs(); render(); });
   });
 }
 function togglePin(id){
@@ -685,8 +697,9 @@ function removeAfterSwipe(slot, id){
     } else {
       const c = findCluster(id); if (!c) return;
       const now = Date.now(); c.items.forEach(i => dismissed[i.link] = now);
+      const entry = logEntry(c); swipeLog.push(entry); saveLogs();
       store.set("dismissed", dismissed); store.set("hintSeen", true); render();
-      toast("Ausgeblendet", () => { c.items.forEach(i => delete dismissed[i.link]); store.set("dismissed", dismissed); render(); });
+      toast("Ausgeblendet", () => { c.items.forEach(i => delete dismissed[i.link]); swipeLog = swipeLog.filter(e => e !== entry); saveLogs(); store.set("dismissed", dismissed); render(); });
     }
   }, 260);
 }
@@ -739,6 +752,7 @@ document.addEventListener("click", e => {
     sources.splice(idx, 1); saveAll(); render();
     toast(removed.name + " entfernt", () => { sources.splice(idx, 0, removed); saveAll(); render(); }); return;
   }
+  if (e.target.id === "exportLog"){ exportLog(); return; }
   if (e.target.id === "clearRead"){
     const old = readList, oldDis = {...dismissed}, now = Date.now();
     readList.forEach(c => c.items.forEach(i => dismissed[i.link] = now));
@@ -777,6 +791,18 @@ document.addEventListener("submit", async e => {
     err.hidden = false; btn.disabled = false; btn.textContent = "Quelle prüfen und hinzufügen";
   }
 });
+async function exportLog(){
+  const data = JSON.stringify({app:"Lagebild", exportiert:new Date().toISOString(), hideSport:settings.hideSport,
+    quellen:sources.filter(s => s.on).map(s => s.name), weggewischt:swipeLog, gelesen:readLog}, null, 1);
+  const name = "lagebild-lerndaten-" + new Date().toISOString().slice(0, 10) + ".json";
+  try{
+    const file = new File([data], name, {type:"application/json"});
+    if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:"Lagebild Lerndaten"}); return; }
+  }catch(err){ if (err && err.name === "AbortError") return; }
+  try{ await navigator.clipboard.writeText(data); toast("Lerndaten in die Zwischenablage kopiert"); return; }catch(err){}
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], {type:"application/json"})); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); toast("Lerndaten heruntergeladen");
+}
 function setView(v){
   state.view = v; state.cat = "Alle";
   document.querySelectorAll(".tab").forEach(t => { if (t.dataset.view === v) t.setAttribute("aria-current","page"); else t.removeAttribute("aria-current"); });
