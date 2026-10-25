@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lagebild</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lagebild">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3f5f8" id="themeColor">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<link rel="icon" href="data:image/png;base64,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">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<style>
+/* Layout: eine Spalte wie ein Lagebericht – Kopf mit Datum, Filterleiste, Meldungskarten, Tableiste unten */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --ink:#14243a; --muted:#5d6b7e; --line:#dde3ea;
+  --accent:#c98a0c; --accent-ink:#ffffff; --signal:#14243a; --danger:#b3261e; --ok:#2e7d4f;
+  --swipe:#e7ebf0;
+  --c-politik:#2f5aa8; --c-wirtschaft:#2e7d6b; --c-wissenschaft:#7a4fb3; --c-technik:#0f7891;
+  --c-sport:#b45a1c; --c-kultur:#a83d6b; --c-gesundheit:#3b8a3e; --c-panorama:#6b6b7a; --c-regional:#b5841a; --c-vermischtes:#6b7686;
+  --f-head:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --f-ui:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1520; --surface:#16212f; --ink:#e6ebf2; --muted:#93a1b3; --line:#243244;
+  --accent:#f2c44d; --accent-ink:#14243a; --signal:#e6ebf2; --danger:#ff8a80; --ok:#7fd1a0; --swipe:#1e2b3b;
+  --c-politik:#7fa4ec; --c-wirtschaft:#6cc7b0; --c-wissenschaft:#b99ae6; --c-technik:#5cc2da;
+  --c-sport:#f0a06a; --c-kultur:#ec8fb6; --c-gesundheit:#86cf88; --c-panorama:#aeb0c0; --c-regional:#f2c44d; --c-vermischtes:#a3adbb;
+  color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0d1520; --surface:#16212f; --ink:#e6ebf2; --muted:#93a1b3; --line:#243244;
+  --accent:#f2c44d; --accent-ink:#14243a; --signal:#e6ebf2; --danger:#ff8a80; --ok:#7fd1a0; --swipe:#1e2b3b;
+  --c-politik:#7fa4ec; --c-wirtschaft:#6cc7b0; --c-wissenschaft:#b99ae6; --c-technik:#5cc2da;
+  --c-sport:#f0a06a; --c-kultur:#ec8fb6; --c-gesundheit:#86cf88; --c-panorama:#aeb0c0; --c-regional:#f2c44d; --c-vermischtes:#a3adbb;
+  color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom,0px));min-height:100vh}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:680px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Kopf */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg)}
+.top .wrap{padding-block:14px 8px;display:flex;align-items:flex-end;gap:12px}
+.brand{flex:1;min-width:0}
+.brand h1{margin:0;font:700 28px/1.05 var(--f-head);letter-spacing:-.01em}
+.brand h1 span{color:var(--accent)}
+.stamp{margin-top:4px;font:500 11px/1.3 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none}
+.iconbtn svg{width:20px;height:20px}
+.iconbtn.spin svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-block:6px 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--cat,var(--muted))}
+.chip .n{font:500 11px var(--f-mono);color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--signal);color:var(--bg);border-color:var(--signal)}
+.chip[aria-pressed="true"] .n{color:inherit;opacity:.75}
+.progress{height:2px;background:var(--line);overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+
+/* Liste */
+main .wrap{padding-block:6px 24px;display:flex;flex-direction:column;gap:10px}
+.slot{position:relative;border-radius:var(--r);transition:height .25s ease,margin .25s ease,opacity .25s}
+.slot .under{position:absolute;inset:0;border-radius:var(--r);background:var(--swipe);display:flex;align-items:center;justify-content:space-between;padding:0 20px;color:var(--muted);font-size:13px;font-weight:600}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 12px;touch-action:pan-y;user-select:none;-webkit-user-select:none;will-change:transform}
+.card.anim{transition:transform .25s ease}
+.meta{display:flex;align-items:center;gap:8px;font:500 11px/1 var(--f-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.meta .cat{color:var(--cat);display:flex;align-items:center;gap:6px}
+.meta .cat::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--cat)}
+.meta .sp{flex:1}
+.pin{width:36px;height:36px;margin:-10px -8px -10px 0;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--muted)}
+.pin svg{width:19px;height:19px}
+.pin[aria-pressed="true"]{color:var(--accent)}
+.card h2{margin:8px 0 0;font:600 19px/1.25 var(--f-head);text-wrap:balance;letter-spacing:-.005em}
+.card h2 a{color:inherit;text-decoration:none}
+.card p{margin:6px 0 0;color:var(--muted);font-size:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.srcs{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.src{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12.5px;font-weight:500;text-decoration:none;color:var(--ink);background:var(--bg)}
+.src time{font:500 11px var(--f-mono);color:var(--muted)}
+.multi{font:500 11px var(--f-mono);color:var(--accent);letter-spacing:.04em}
+.foot{margin-top:8px;font:500 11px var(--f-mono);color:var(--muted);display:flex;gap:6px}
+.empty{padding:48px 8px;text-align:center;color:var(--muted)}
+.empty b{display:block;font:600 19px var(--f-head);color:var(--ink);margin-bottom:6px}
+.hint{font-size:12.5px;color:var(--muted);text-align:center;padding:4px 0 2px}
+
+/* Einstellungen */
+.sect{margin-top:8px}
+.sect h3{margin:18px 4px 8px;font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.group{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line);min-height:52px}
+.row:first-child{border-top:0}
+.row .lbl{flex:1;min-width:0}
+.row .lbl small{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+.seg button{border:0;background:none;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.switch{position:relative;width:46px;height:28px;flex:none}
+.switch input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.switch span{position:absolute;inset:0;border-radius:999px;background:var(--line);transition:background .2s;pointer-events:none}
+.switch span::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .2s}
+.switch input:checked+span{background:var(--ok)}
+.switch input:checked+span::after{transform:translateX(18px)}
+.switch input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.status{font:500 11px var(--f-mono);white-space:nowrap}
+.status.ok{color:var(--ok)} .status.err{color:var(--danger)} .status.idle{color:var(--muted)}
+.del{border:0;background:none;color:var(--muted);width:32px;height:32px;border-radius:8px;display:grid;place-items:center;flex:none}
+.del svg{width:17px;height:17px}
+.form{display:grid;gap:10px;padding:14px}
+.form input,.form select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px}
+.form .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:600;background:var(--signal);color:var(--bg)}
+.btn.ghost{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.btn.warn{background:var(--danger);color:#fff}
+.note{font-size:12.5px;color:var(--muted);padding:8px 4px 0}
+.err-msg{color:var(--danger);font-size:13px}
+
+/* Tableiste & Toast */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+.tab{border:0;background:none;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:var(--muted)}
+.tab svg{width:23px;height:23px}
+.tab[aria-current="page"]{color:var(--ink)}
+.tab[aria-current="page"] svg{color:var(--accent)}
+.tab .badge{font:500 10px var(--f-mono)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--signal);color:var(--bg);border-radius:12px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:12px;font-size:14px;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.toast button{border:0;background:none;color:var(--accent);font-weight:600;padding:4px 6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>Lagebild<span>.</span></h1>
+      <div class="stamp" id="stamp">Wird geladen …</div>
+    </div>
+    <button class="iconbtn" id="refresh" aria-label="Neu laden">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>
+    </button>
+  </div>
+  <div class="progress"><i id="prog"></i></div>
+  <div class="wrap"><div class="chips" id="chips" role="toolbar" aria-label="Kategorien"></div></div>
+</header>
+
+<main>
+  <section id="view-feed" class="wrap"></section>
+  <section id="view-pins" class="wrap" hidden></section>
+  <section id="view-settings" class="wrap" hidden></section>
+</main>
+
+<nav class="tabbar" aria-label="Bereiche">
+  <div class="wrap">
+    <button class="tab" data-view="feed" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Aktuell</button>
+    <button class="tab" data-view="pins">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg><span>Gemerkt <span class="badge" id="pinCount"></span></span></button>
+    <button class="tab" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Einstellungen</button>
+  </div>
+</nav>
+
+<div class="toast" id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastUndo">Rückgängig</button></div>
+
+<script>
+"use strict";
+/* ---------- Grunddaten ---------- */
+const CATS = ["Politik","Wirtschaft","Wissenschaft","Technik","Gesundheit","Sport","Kultur","Panorama","Regional","Vermischtes"];
+const CAT_VAR = c => "var(--c-" + c.toLowerCase() + ")";
+const GN = q => "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=de&gl=DE&ceid=DE:de";
+
+const DEFAULT_SOURCES = [
+  {id:"tagesschau", name:"Tagesschau", url:"https://www.tagesschau.de/index~rss2.xml", cat:"auto", group:"Überregional", on:true},
+  {id:"spiegel", name:"Spiegel", url:"https://www.spiegel.de/schlagzeilen/index.rss", cat:"auto", group:"Überregional", on:true},
+  {id:"zeit", name:"Zeit", url:"https://newsfeed.zeit.de/index", cat:"auto", group:"Überregional", on:true},
+  {id:"sz", name:"SZ", url:"https://rss.sueddeutsche.de/rss/Topthemen", cat:"auto", group:"Überregional", on:true},
+  {id:"heise", name:"heise", url:"https://www.heise.de/rss/heise-atom.xml", cat:"Technik", group:"Überregional", on:true},
+  {id:"golem", name:"Golem", url:"https://rss.golem.de/rss.php?feed=RSS2.0", cat:"Technik", group:"Überregional", on:true},
+  {id:"sa-welver", name:"Soester Anzeiger · Welver", url:"https://www.soester-anzeiger.de/lokales/welver/rssfeed.rdf", cat:"Regional", group:"Regional", on:true},
+  {id:"sa-soest", name:"Soester Anzeiger · Soest", url:"https://www.soester-anzeiger.de/lokales/soest/rssfeed.rdf", cat:"Regional", group:"Regional", on:true},
+  {id:"sa-werl", name:"Soester Anzeiger · Werl", url:"https://www.soester-anzeiger.de/lokales/werl/rssfeed.rdf", cat:"Regional", group:"Regional", on:true},
+  {id:"wa-hamm", name:"Westfälischer Anzeiger · Hamm", url:"https://www.wa.de/hamm/rssfeed.rdf", cat:"Regional", group:"Regional", on:true},
+  {id:"wdr-wl", name:"WDR · Westfalen-Lippe", url:"https://www1.wdr.de/nachrichten/westfalen-lippe/uebersicht-westfalen-lippe-100.feed", cat:"Regional", group:"Regional", on:true},
+  {id:"gn-owl", name:"OWL (Google News)", url:GN("Ostwestfalen OR Bielefeld OR Paderborn OR Gütersloh OR Herford OR Detmold OR Lippstadt when:2d"), cat:"Regional", group:"Regional", on:true},
+  {id:"gn-soest", name:"Kreis Soest & Hamm (Google News)", url:GN("Welver OR Werl OR Soest OR Hamm Westfalen when:2d"), cat:"Regional", group:"Regional", on:true}
+];
+
+const PROXIES = {
+  allorigins: u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  corsproxy:  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  codetabs:   u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
+};
+
+/* ---------- Speicher ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("lagebild:" + k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem("lagebild:" + k, JSON.stringify(v)); }catch(e){} }
+};
+let settings = Object.assign({theme:"system", open:"original", hours:24, merge:true, proxy:"auto", customProxy:""}, store.get("settings", {}));
+let sources = store.get("sources", null) || DEFAULT_SOURCES.map(s => ({...s}));
+let dismissed = store.get("dismissed", {});          // link -> Zeitstempel
+let pins = store.get("pins", []);                     // gespeicherte Cluster
+let cache = store.get("cache", {items:[], at:0, status:{}});
+let proxyHint = store.get("proxyHint", {});           // Quelle -> zuletzt funktionierender Dienst
+let state = {view:"feed", cat:"Alle", loading:false};
+
+function saveAll(){ store.set("settings", settings); store.set("sources", sources); store.set("dismissed", dismissed); store.set("pins", pins); }
+
+/* ---------- Theme ---------- */
+function applyTheme(){
+  const r = document.documentElement;
+  if (settings.theme === "system") r.removeAttribute("data-theme"); else r.setAttribute("data-theme", settings.theme);
+  requestAnimationFrame(() => {
+    document.getElementById("themeColor").setAttribute("content", getComputedStyle(document.body).backgroundColor);
+  });
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
+
+/* ---------- Abruf & Parsing ---------- */
+function proxyOrder(srcId){
+  if (settings.proxy === "custom" && settings.customProxy) return [u => settings.customProxy + encodeURIComponent(u)];
+  if (settings.proxy !== "auto" && PROXIES[settings.proxy]) return [PROXIES[settings.proxy]];
+  const names = Object.keys(PROXIES);
+  const hint = proxyHint[srcId];
+  if (hint && names.includes(hint)) names.sort((a,b) => (b === hint) - (a === hint));
+  return names.map(n => Object.assign(PROXIES[n], {pname:n}));
+}
+async function fetchText(url, srcId){
+  let lastErr;
+  for (const p of proxyOrder(srcId)){
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 12000);
+    try{
+      const res = await fetch(p(url), {signal:ctrl.signal});
+      clearTimeout(t);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const txt = await res.text();
+      if (!/<(rss|feed|rdf:RDF|channel)[\s>]/i.test(txt)) throw new Error("kein Feed");
+      if (p.pname){ proxyHint[srcId] = p.pname; store.set("proxyHint", proxyHint); }
+      return txt;
+    }catch(e){ clearTimeout(t); lastErr = e; }
+  }
+  throw lastErr || new Error("nicht erreichbar");
+}
+const kids = (el, names) => Array.from(el.children).filter(c => names.includes(c.localName));
+const kidText = (el, names) => { for (const n of names){ const k = kids(el,[n])[0]; if (k && k.textContent.trim()) return k.textContent.trim(); } return ""; };
+const htmlToText = s => { if (!s) return ""; const d = new DOMParser().parseFromString(s, "text/html"); return (d.body.textContent || "").replace(/\s+/g," ").trim(); };
+
+function parseFeed(xml, src){
+  const doc = new DOMParser().parseFromString(xml, "text/xml");
+  if (doc.querySelector("parsererror")) throw new Error("ungültiges XML");
+  const entries = Array.from(doc.getElementsByTagNameNS("*","item")).concat(Array.from(doc.getElementsByTagNameNS("*","entry")));
+  const out = [];
+  for (const e of entries){
+    let title = htmlToText(kidText(e,["title"]));
+    let link = kidText(e,["link"]);
+    if (!link){ const l = kids(e,["link"]).find(x => !x.getAttribute("rel") || x.getAttribute("rel") === "alternate"); if (l) link = l.getAttribute("href") || ""; }
+    if (!link) link = kidText(e,["guid","id"]);
+    if (!title || !/^https?:/.test(link)) continue;
+    let teaser = htmlToText(kidText(e,["description","summary","encoded","content"]));
+    if (teaser.length > 260) teaser = teaser.slice(0, 250).replace(/\s\S*$/,"") + " …";
+    const dateStr = kidText(e,["pubDate","date","published","updated"]);
+    let date = Date.parse(dateStr); if (isNaN(date)) date = Date.now();
+    const feedCats = kids(e,["category","subject"]).map(c => (c.textContent || c.getAttribute("term") || "").toLowerCase()).filter(Boolean);
+    let via = "";
+    if (/news\.google\./.test(src.url)){
+      const s = kids(e,["source"])[0]; via = s ? s.textContent.trim() : "";
+      if (via && title.endsWith(" - " + via)) title = title.slice(0, -(via.length + 3));
+      if (teaser.startsWith(title)) teaser = "";
+    }
+    if (teaser && teaser.toLowerCase() === title.toLowerCase()) teaser = "";
+    out.push({title, teaser, link, date, src:src.id, srcName:src.name, via, cat: detectCat(src, link, feedCats)});
+  }
+  return out;
+}
+
+const CAT_KEYS = [
+  ["Sport", ["sport","fussball","bundesliga","formel1","formel-1","olympia","bvb","tennis"]],
+  ["Gesundheit", ["gesundheit","medizin","pflege"]],
+  ["Wissenschaft", ["wissenschaft","wissen","forschung","klima","umwelt","natur","weltraum"]],
+  ["Technik", ["digital","netzwelt","technik","tech","computer","mobilitaet","auto","games","it","security","software","hardware"]],
+  ["Wirtschaft", ["wirtschaft","finanzen","geld","boerse","unternehmen","verbraucher","karriere","job"]],
+  ["Politik", ["politik","inland","ausland","deutschland","welt","international","europa","investigativ","bundestag","nahost","ukraine"]],
+  ["Kultur", ["kultur","kino","film","musik","literatur","buecher","medien","kunst","fernsehen","tv"]],
+  ["Regional", ["lokales","nordrhein-westfalen","nrw","region","westfalen"]],
+  ["Panorama", ["panorama","vermischtes","gesellschaft","leben","stars","stil","reise","boulevard","promis","liebe","familie","entdecken"]]
+];
+function detectCat(src, link, feedCats){
+  if (src.cat && src.cat !== "auto") return src.cat;
+  let segs = [];
+  try{ segs = new URL(link).pathname.toLowerCase().split("/").filter(Boolean).slice(0,2); }catch(e){}
+  for (const [cat, keys] of CAT_KEYS){ if (segs.some(s => keys.includes(s))) return cat; }
+  for (const fc of feedCats){ for (const [cat, keys] of CAT_KEYS){ if (keys.some(k => fc === k || fc.includes(k) && k.length > 4)) return cat; } }
+  return src.fallback || "Vermischtes";
+}
+
+/* ---------- Doppelte Meldungen erkennen ---------- */
+const STOP = new Set(("der die das den dem des ein eine einer eines einem einen und oder aber als auch auf aus bei bis mit nach seit von vor zum zur fuer ueber unter gegen ohne durch wie was wer wird werden wurde wurden ist sind war hat haben hatte nicht noch nur mehr schon jetzt nun doch sich sie ihr ihre sein seine man wir uns dass wenn weil denn dann hier dort heute gestern morgen neue neuen neuer neues erste ersten alle viele immer wieder soll sollen will kann koennen muss muessen live liveblog newsblog ticker video kommentar analyse interview update eilmeldung news plus diese dieser dieses beim vom ins im am an in zu so es um da ab").split(" "));
+function norm(s){ return s.toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss"); }
+function tokens(title){
+  const t = new Set();
+  for (const w of norm(title).split(/[^a-z0-9]+/)){
+    if (w.length < 3 || STOP.has(w) || /^\d+$/.test(w) && w.length < 4) continue;
+    t.add(w.slice(0, 6));
+  }
+  return t;
+}
+function sim(a, b){
+  let shared = 0; for (const x of a) if (b.has(x)) shared++;
+  if (shared < 2) return 0;
+  return shared / Math.min(a.size, b.size);
+}
+function cluster(items){
+  const n = items.length, parent = items.map((_,i) => i);
+  const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  const toks = items.map(it => tokens(it.title));
+  if (settings.merge){
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++){
+      if (items[i].src === items[j].src) continue;
+      if (Math.abs(items[i].date - items[j].date) > 36 * 3600e3) continue;
+      if (sim(toks[i], toks[j]) >= 0.5) parent[find(i)] = find(j);
+    }
+  }
+  const groups = new Map();
+  items.forEach((it, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(i); });
+  const clusters = [];
+  for (const idx of groups.values()){
+    const its = idx.map(i => items[i]).sort((a,b) => b.date - a.date);
+    let best = 0, bestScore = -1;
+    if (idx.length > 2){
+      idx.forEach((i, k) => {
+        let s = 0; idx.forEach(j => { if (i !== j) s += sim(toks[i], toks[j]); });
+        s -= items[i].title.length / 1000;
+        if (s > bestScore){ bestScore = s; best = k; }
+      });
+    }
+    const lead = idx.length > 2 ? items[idx[best]] : its.reduce((a,b) => (a.title.length <= b.title.length ? a : b));
+    const title = lead.title.replace(/^(\+{2,}|liveblog|newsblog|ticker|eilmeldung)[:\s+]*/i, "").replace(/\s*\+{2,}\s*$/,"");
+    const teaser = (its.find(x => x.teaser && x.src === lead.src) || its.find(x => x.teaser) || {}).teaser || "";
+    const counts = {};
+    its.forEach(x => { counts[x.cat] = (counts[x.cat] || 0) + (x.cat === "Vermischtes" ? 0.5 : 1); });
+    const cat = Object.keys(counts).sort((a,b) => counts[b] - counts[a])[0];
+    const seen = new Set();
+    const list = its.filter(x => { const k = x.src + (x.via || ""); if (seen.has(k)) return false; seen.add(k); return true; });
+    clusters.push({id: its.map(x => x.link).sort()[0], title, teaser, cat, date: its[0].date, items: list.map(x => ({link:x.link, name: x.via ? x.via : x.srcName, date:x.date}))});
+  }
+  return clusters.sort((a,b) => b.date - a.date);
+}
+
+/* ---------- Laden ---------- */
+async function refresh(){
+  if (state.loading) return;
+  state.loading = true;
+  const btn = document.getElementById("refresh"); btn.classList.add("spin");
+  const active = sources.filter(s => s.on);
+  let done = 0; const prog = document.getElementById("prog"); prog.style.width = "4%";
+  const all = []; const status = {};
+  await Promise.all(active.map(async s => {
+    try{
+      const items = parseFeed(await fetchText(s.url, s.id), s);
+      all.push(...items); status[s.id] = {ok:true, n:items.length, at:Date.now()};
+    }catch(e){
+      status[s.id] = {ok:false, msg: e.name === "AbortError" ? "Zeitüberschreitung" : (e.message || "Fehler"), at:Date.now()};
+      const old = cache.items.filter(i => i.src === s.id); all.push(...old);
+    }
+    done++; prog.style.width = Math.round(done / active.length * 100) + "%";
+    if (state.view === "settings") renderSettings(status);
+  }));
+  const seen = new Set();
+  cache = {items: all.filter(i => !seen.has(i.link) && seen.add(i.link)), at: Date.now(), status};
+  store.set("cache", cache);
+  pruneDismissed();
+  state.loading = false; btn.classList.remove("spin");
+  setTimeout(() => { prog.style.width = "0"; }, 400);
+  render();
+}
+function pruneDismissed(){
+  const limit = Date.now() - 10 * 86400e3;
+  for (const k in dismissed) if (dismissed[k] < limit) delete dismissed[k];
+  store.set("dismissed", dismissed);
+}
+
+/* ---------- Darstellung ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const openUrl = u => settings.open === "archive" ? "https://archive.ph/newest/" + u : u;
+function ago(t){
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "jetzt"; if (m < 60) return m + " Min";
+  const h = Math.round(m / 60); if (h < 24) return h + " Std";
+  return new Date(t).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"});
+}
+function currentClusters(){
+  const minDate = Date.now() - settings.hours * 3600e3;
+  const activeIds = new Set(sources.filter(s => s.on).map(s => s.id));
+  const items = cache.items.filter(i => i.date >= minDate && activeIds.has(i.src) && i.date <= Date.now() + 3600e3);
+  return cluster(items).filter(c => !c.items.some(i => dismissed[i.link]));
+}
+const PIN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>';
+const PIN_ICON_ON = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>';
+
+function cardHTML(c, mode){
+  const pinned = pins.some(p => p.id === c.id);
+  const multi = c.items.length > 1;
+  const srcs = multi ? '<div class="srcs">' + c.items.map(i =>
+      `<a class="src" href="${esc(openUrl(i.link))}" target="_blank" rel="noopener">${esc(i.name)} <time>${ago(i.date)}</time></a>`).join("") + "</div>" : "";
+  return `<div class="slot" data-id="${esc(c.id)}">
+    <div class="under"><span>${mode === "pins" ? "Entfernen" : "Ausblenden"}</span><span>${mode === "pins" ? "Entfernen" : "Ausblenden"}</span></div>
+    <article class="card" style="--cat:${CAT_VAR(c.cat)}">
+      <div class="meta"><span class="cat">${esc(c.cat)}</span>${multi ? `<span class="multi">${c.items.length} Quellen</span>` : `<span>${esc(c.items[0].name)}</span>`}<span class="sp"></span><span>${ago(c.date)}</span>
+        <button class="pin" aria-pressed="${pinned}" aria-label="${pinned ? "Nicht mehr merken" : "Für später merken"}">${pinned ? PIN_ICON_ON : PIN_ICON}</button></div>
+      <h2><a href="${esc(openUrl(c.items[0].link))}" target="_blank" rel="noopener">${esc(c.title)}</a></h2>
+      ${c.teaser ? `<p>${esc(c.teaser)}</p>` : ""}
+      ${srcs}
+    </article></div>`;
+}
+
+let lastClusters = [];
+function renderChips(){
+  const list = state.view === "pins" ? pins : lastClusters;
+  const counts = {}; list.forEach(c => counts[c.cat] = (counts[c.cat] || 0) + 1);
+  const cats = ["Alle", ...CATS.filter(c => counts[c])];
+  if (!cats.includes(state.cat)) state.cat = "Alle";
+  $("chips").innerHTML = cats.map(c => `<button class="chip" aria-pressed="${state.cat === c}" data-cat="${esc(c)}" style="--cat:${c === "Alle" ? "var(--muted)" : CAT_VAR(c)}">${c === "Alle" ? "" : '<span class="dot"></span>'}${esc(c)} <span class="n">${c === "Alle" ? list.length : counts[c]}</span></button>`).join("");
+  $("chips").parentElement.hidden = state.view === "settings";
+}
+function renderFeed(){
+  lastClusters = currentClusters();
+  renderChips();
+  const shown = lastClusters.filter(c => state.cat === "Alle" || c.cat === state.cat);
+  const v = $("view-feed");
+  if (!shown.length){
+    v.innerHTML = cache.at ? `<div class="empty"><b>Alles gelesen</b>Keine neuen Meldungen${state.cat !== "Alle" ? " in „" + esc(state.cat) + "“" : ""} aus den letzten ${settings.hours} Stunden.</div>`
+                           : `<div class="empty"><b>Meldungen werden geladen</b>Die Feeds deiner Quellen werden gerade abgerufen.</div>`;
+    return;
+  }
+  v.innerHTML = (store.get("hintSeen", false) ? "" : '<div class="hint">Zur Seite wischen blendet eine Meldung aus.</div>') + shown.map(c => cardHTML(c, "feed")).join("");
+}
+function renderPins(){
+  renderChips();
+  const shown = pins.filter(c => state.cat === "Alle" || c.cat === state.cat).sort((a,b) => b.pinnedAt - a.pinnedAt);
+  $("view-pins").innerHTML = shown.length ? shown.map(c => cardHTML(c, "pins")).join("")
+    : '<div class="empty"><b>Noch nichts gemerkt</b>Tippe bei einer Meldung auf das Lesezeichen, um sie hier für später abzulegen.</div>';
+}
+function updateStamp(){
+  const d = new Date();
+  const day = d.toLocaleDateString("de-DE", {weekday:"long", day:"numeric", month:"long"});
+  $("stamp").textContent = cache.at ? day + " · Stand " + new Date(cache.at).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}) : day;
+  $("pinCount").textContent = pins.length ? pins.length : "";
+}
+function render(){
+  updateStamp();
+  if (state.view === "feed") renderFeed();
+  else if (state.view === "pins") renderPins();
+  else renderSettings(cache.status);
+}
+
+/* ---------- Einstellungen ---------- */
+const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+function seg(name, opts){ return `<div class="seg" data-set="${name}">` + opts.map(([v,l]) => `<button data-v="${v}" aria-pressed="${String(settings[name]) === String(v)}">${l}</button>`).join("") + "</div>"; }
+function renderSettings(status){
+  status = status || {};
+  const groups = ["Überregional","Regional","Eigene"];
+  const srcRows = g => sources.filter(s => (s.group || "Eigene") === g).map(s => {
+    const st = status[s.id];
+    const stHTML = !s.on ? '<span class="status idle">aus</span>' : !st ? '<span class="status idle">–</span>' : st.ok ? `<span class="status ok">${st.n} ${st.n === 1 ? "Meldung" : "Meldungen"}</span>` : `<span class="status err" title="${esc(st.msg)}">Fehler</span>`;
+    return `<div class="row"><div class="lbl">${esc(s.name)}<small>${s.cat === "auto" ? "Kategorie automatisch" : esc(s.cat)} · ${esc(s.url.replace(/^https?:\/\//,""))}</small></div>${stHTML}
+      <button class="del" data-del="${esc(s.id)}" aria-label="${esc(s.name)} entfernen">${TRASH}</button>
+      <label class="switch"><input type="checkbox" id="on-${esc(s.id)}" data-toggle="${esc(s.id)}" ${s.on ? "checked" : ""} aria-label="${esc(s.name)} aktiv"><span></span></label></div>`;
+  }).join("");
+  const v = $("view-settings");
+  const openEl = document.activeElement && document.activeElement.id;
+  const formVals = ["nsName","nsUrl","nsCat","customProxy"].reduce((o,k) => { const el = $(k); if (el) o[k] = el.value; return o; }, {});
+  v.innerHTML = `
+  <div class="sect"><h3>Darstellung</h3><div class="group">
+    <div class="row"><div class="lbl">Erscheinungsbild</div>${seg("theme", [["system","System"],["light","Hell"],["dark","Dunkel"]])}</div>
+    <div class="row"><div class="lbl">Zeitraum<small>Wie alt Meldungen höchstens sein dürfen</small></div>${seg("hours", [[24,"24 Std"],[48,"48 Std"],[168,"7 Tage"]])}</div>
+    <div class="row"><div class="lbl">Doppelte Meldungen zusammenfassen<small>Gleiches Thema aus mehreren Quellen als eine Karte</small></div><label class="switch"><input type="checkbox" id="merge" ${settings.merge ? "checked" : ""}><span></span></label></div>
+  </div></div>
+  <div class="sect"><h3>Beim Antippen öffnen</h3><div class="group">
+    <div class="row"><div class="lbl">Ziel<small>${settings.open === "archive" ? "Lädt den Artikel über archive.ph" : "Öffnet die Seite der Quelle"}</small></div>${seg("open", [["original","Originalseite"],["archive","archive.ph"]])}</div>
+  </div></div>
+  ${groups.map(g => { const r = srcRows(g); return r ? `<div class="sect"><h3>Quellen · ${g}</h3><div class="group">${r}</div></div>` : ""; }).join("")}
+  <div class="sect"><h3>Quelle hinzufügen</h3><div class="group"><form class="form" id="addForm">
+    <input id="nsName" placeholder="Name, z. B. Patriot Lippstadt" required>
+    <input id="nsUrl" type="url" inputmode="url" autocapitalize="off" placeholder="RSS-Adresse (https://…)" required>
+    <select id="nsCat" aria-label="Kategorie"><option value="auto">Kategorie automatisch erkennen</option>${CATS.map(c => `<option>${c}</option>`).join("")}</select>
+    <div class="err-msg" id="addErr" hidden></div>
+    <button class="btn" type="submit">Quelle prüfen und hinzufügen</button>
+  </form></div>
+  <p class="note">Tipp: Für ein Stichwort ohne eigenen Feed geht auch eine Google-News-Suche, z. B. https://news.google.com/rss/search?q=Welver&amp;hl=de&amp;gl=DE&amp;ceid=DE:de</p></div>
+  <div class="sect"><h3>Abruf</h3><div class="group">
+    <div class="row"><div class="lbl">Abruf-Dienst<small>Leitet die Feeds an die App weiter</small></div>
+      <select id="proxySel" style="padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg)">
+        ${[["auto","Automatisch"],["allorigins","allorigins"],["corsproxy","corsproxy.io"],["codetabs","codetabs"],["custom","Eigener"]].map(([k,l]) => `<option value="${k}" ${settings.proxy === k ? "selected" : ""}>${l}</option>`).join("")}
+      </select></div>
+    <div class="row" ${settings.proxy === "custom" ? "" : "hidden"}><input id="customProxy" style="flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px" placeholder="https://mein-proxy.example/?url=" value="${esc(settings.customProxy)}"></div>
+  </div></div>
+  <div class="sect"><h3>Zurücksetzen</h3><div class="group">
+    <div class="row"><div class="lbl">Ausgeblendete Meldungen<small>${Object.keys(dismissed).length} ausgeblendet</small></div><button class="btn ghost" id="resetDismissed">Wieder zeigen</button></div>
+    <div class="row"><div class="lbl">Quellenliste<small>Stellt die vorgeschlagenen Quellen wieder her</small></div><button class="btn ghost" id="resetSources">Standard</button></div>
+  </div></div>
+  <p class="note">Alle Einstellungen, gemerkten und ausgeblendeten Meldungen bleiben nur auf diesem Gerät gespeichert.</p>`;
+  for (const k in formVals){ const el = $(k); if (el) el.value = formVals[k]; }
+  if (openEl && $(openEl)) $(openEl).focus();
+}
+
+/* ---------- Toast ---------- */
+let toastTimer, undoFn;
+function toast(msg, undo){
+  $("toastMsg").textContent = msg; undoFn = undo; $("toastUndo").hidden = !undo; $("toast").hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").hidden = true; undoFn = null; }, 4500);
+}
+$("toastUndo").addEventListener("click", () => { if (undoFn) undoFn(); $("toast").hidden = true; });
+
+/* ---------- Aktionen ---------- */
+function findCluster(id){ return lastClusters.find(c => c.id === id) || pins.find(p => p.id === id); }
+function togglePin(id){
+  const i = pins.findIndex(p => p.id === id);
+  if (i >= 0){ pins.splice(i, 1); toast("Nicht mehr gemerkt"); }
+  else { const c = findCluster(id); if (!c) return; pins.push({...c, pinnedAt: Date.now()}); toast("Gemerkt für später"); }
+  store.set("pins", pins); render();
+}
+function removeAfterSwipe(slot, id){
+  slot.style.height = slot.offsetHeight + "px";
+  requestAnimationFrame(() => { slot.style.height = "0px"; slot.style.opacity = "0"; slot.style.marginBottom = "-10px"; });
+  setTimeout(() => {
+    if (state.view === "pins"){
+      const idx = pins.findIndex(p => p.id === id); const removed = pins.splice(idx, 1)[0];
+      store.set("pins", pins); render();
+      toast("Aus „Gemerkt“ entfernt", () => { pins.push(removed); store.set("pins", pins); render(); });
+    } else {
+      const c = findCluster(id); if (!c) return;
+      const now = Date.now(); c.items.forEach(i => dismissed[i.link] = now);
+      store.set("dismissed", dismissed); store.set("hintSeen", true); render();
+      toast("Ausgeblendet", () => { c.items.forEach(i => delete dismissed[i.link]); store.set("dismissed", dismissed); render(); });
+    }
+  }, 260);
+}
+
+/* Wischen */
+let drag = null;
+document.addEventListener("pointerdown", e => {
+  const card = e.target.closest(".card"); if (!card || e.target.closest(".pin")) return;
+  drag = {card, slot: card.parentElement, x: e.clientX, y: e.clientY, dx: 0, active: false, id: e.pointerId, t: performance.now()};
+});
+document.addEventListener("pointermove", e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.active){
+    if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)){ drag = null; return; }
+    if (Math.abs(dx) > 10){ drag.active = true; drag.card.classList.remove("anim"); try{ drag.card.setPointerCapture(e.pointerId); }catch(_){} }
+    else return;
+  }
+  drag.dx = dx; drag.card.style.transform = `translateX(${dx}px) rotate(${dx / 60}deg)`;
+});
+function endDrag(e){
+  if (!drag || (e && e.pointerId !== drag.id)) return;
+  const d = drag; drag = null;
+  if (!d.active) return;
+  d.card.dataset.dragged = "1"; setTimeout(() => delete d.card.dataset.dragged, 50);
+  const w = d.card.offsetWidth, v = Math.abs(d.dx) / (performance.now() - d.t);
+  d.card.classList.add("anim");
+  if (Math.abs(d.dx) > w * 0.35 || (v > 0.6 && Math.abs(d.dx) > 50)){
+    d.card.style.transform = `translateX(${Math.sign(d.dx) * (w + 60)}px)`;
+    removeAfterSwipe(d.slot, d.slot.dataset.id);
+  } else d.card.style.transform = "";
+}
+document.addEventListener("pointerup", endDrag);
+document.addEventListener("pointercancel", e => { if (drag && drag.active){ drag.card.classList.add("anim"); drag.card.style.transform = ""; } drag = null; });
+document.addEventListener("click", e => {
+  const card = e.target.closest(".card");
+  if (card && card.dataset.dragged){ e.preventDefault(); e.stopPropagation(); return; }
+  const pin = e.target.closest(".pin"); if (pin){ togglePin(pin.closest(".slot").dataset.id); return; }
+  if (card && !e.target.closest("a")){ card.querySelector("h2 a").click(); return; }
+  const chip = e.target.closest(".chip"); if (chip){ state.cat = chip.dataset.cat; render(); window.scrollTo({top:0}); return; }
+  const tab = e.target.closest(".tab"); if (tab){ setView(tab.dataset.view); return; }
+  const segBtn = e.target.closest(".seg button"); if (segBtn){
+    const key = segBtn.parentElement.dataset.set; let val = segBtn.dataset.v;
+    if (key === "hours") val = Number(val);
+    settings[key] = val; saveAll(); if (key === "theme") applyTheme(); render(); return;
+  }
+  const del = e.target.closest("[data-del]"); if (del){
+    const id = del.dataset.del, idx = sources.findIndex(s => s.id === id), removed = sources[idx];
+    sources.splice(idx, 1); saveAll(); render();
+    toast(removed.name + " entfernt", () => { sources.splice(idx, 0, removed); saveAll(); render(); }); return;
+  }
+  if (e.target.id === "resetDismissed"){ const old = dismissed; dismissed = {}; saveAll(); render(); toast("Ausgeblendete Meldungen werden wieder gezeigt", () => { dismissed = old; saveAll(); render(); }); return; }
+  if (e.target.id === "resetSources"){
+    const old = sources; sources = DEFAULT_SOURCES.map(s => ({...s})); saveAll(); render(); refresh();
+    toast("Quellen zurückgesetzt", () => { sources = old; saveAll(); render(); refresh(); }); return;
+  }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.toggle){ const s = sources.find(x => x.id === t.dataset.toggle); s.on = t.checked; saveAll(); if (s.on) refresh(); else render(); }
+  else if (t.id === "merge"){ settings.merge = t.checked; saveAll(); render(); }
+  else if (t.id === "proxySel"){ settings.proxy = t.value; saveAll(); render(); }
+  else if (t.id === "customProxy"){ settings.customProxy = t.value.trim(); saveAll(); }
+});
+document.addEventListener("submit", async e => {
+  if (e.target.id !== "addForm") return;
+  e.preventDefault();
+  const name = $("nsName").value.trim(), url = $("nsUrl").value.trim(), cat = $("nsCat").value, err = $("addErr");
+  const btn = e.target.querySelector("button"); btn.disabled = true; btn.textContent = "Wird geprüft …"; err.hidden = true;
+  const src = {id: "u" + Date.now().toString(36), name, url, cat, group: "Eigene", on: true};
+  try{
+    const items = parseFeed(await fetchText(url, src.id), src);
+    if (!items.length) throw new Error("Der Feed enthält keine Meldungen.");
+    sources.push(src); saveAll();
+    cache.items.push(...items); cache.status[src.id] = {ok:true, n:items.length, at:Date.now()}; store.set("cache", cache);
+    $("nsName").value = ""; $("nsUrl").value = "";
+    toast(name + " hinzugefügt"); render();
+  }catch(ex){
+    err.textContent = "Unter dieser Adresse wurde kein lesbarer RSS-Feed gefunden (" + (ex.message || "Fehler") + "). Prüfe die Adresse oder versuche einen anderen Abruf-Dienst.";
+    err.hidden = false; btn.disabled = false; btn.textContent = "Quelle prüfen und hinzufügen";
+  }
+});
+function setView(v){
+  state.view = v; state.cat = "Alle";
+  document.querySelectorAll(".tab").forEach(t => { if (t.dataset.view === v) t.setAttribute("aria-current","page"); else t.removeAttribute("aria-current"); });
+  ["feed","pins","settings"].forEach(n => $("view-" + n).hidden = n !== v);
+  render(); window.scrollTo({top:0});
+}
+$("refresh").addEventListener("click", refresh);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - cache.at > 10 * 60e3) refresh(); });
+setInterval(() => { if (!document.hidden) updateStamp(); }, 60e3);
+
+/* ---------- Start ---------- */
+applyTheme();
+render();
+refresh();
+</script>
+</body>
+</html>
