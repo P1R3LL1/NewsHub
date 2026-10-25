@@ -130,7 +130,10 @@ main .wrap{padding-block:6px 24px;display:flex;flex-direction:column;gap:10px}
 
 /* Tableiste & Toast */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabbar .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+.tabbar .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
+.day{margin:14px 4px 2px;font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.day:first-child{margin-top:4px}
+.read-at{color:var(--ok)}
 .tab{border:0;background:none;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:var(--muted)}
 .tab svg{width:23px;height:23px}
 .tab[aria-current="page"]{color:var(--ink)}
@@ -159,6 +162,7 @@ main .wrap{padding-block:6px 24px;display:flex;flex-direction:column;gap:10px}
 <main>
   <section id="view-feed" class="wrap"></section>
   <section id="view-pins" class="wrap" hidden></section>
+  <section id="view-read" class="wrap" hidden></section>
   <section id="view-settings" class="wrap" hidden></section>
 </main>
 
@@ -168,6 +172,8 @@ main .wrap{padding-block:6px 24px;display:flex;flex-direction:column;gap:10px}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Aktuell</button>
     <button class="tab" data-view="pins">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg><span>Gemerkt <span class="badge" id="pinCount"></span></span></button>
+    <button class="tab" data-view="read">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>Gelesen</button>
     <button class="tab" data-view="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Einstellungen</button>
   </div>
@@ -210,10 +216,17 @@ const store = {
   get(k, d){ try{ const v = localStorage.getItem("lagebild:" + k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem("lagebild:" + k, JSON.stringify(v)); }catch(e){} }
 };
-let settings = Object.assign({theme:"system", open:"original", hours:24, merge:true, proxy:"auto", customProxy:""}, store.get("settings", {}));
+let settings = Object.assign({theme:"system", open:"original", hours:24, merge:true, hideSport:true, proxy:"auto", customProxy:""}, store.get("settings", {}));
 let sources = store.get("sources", null) || DEFAULT_SOURCES.map(s => ({...s}));
 let dismissed = store.get("dismissed", {});          // link -> Zeitstempel
 let pins = store.get("pins", []);                     // gespeicherte Cluster
+let readList = store.get("read", []);                 // angetippte (gelesene) Cluster mit readAt – getrennt von „dismissed“ (weggewischt)
+const readLinks = () => { const s = new Set(); readList.forEach(c => c.items.forEach(i => s.add(i.link))); return s; };
+function saveRead(){
+  const limit = Date.now() - 14 * 86400e3;
+  readList = readList.filter(c => c.readAt >= limit).sort((a,b) => b.readAt - a.readAt).slice(0, 400);
+  store.set("read", readList);
+}
 let cache = store.get("cache", {items:[], at:0, status:{}});
 let proxyHint = store.get("proxyHint", {});           // Quelle -> zuletzt funktionierender Dienst
 let state = {view:"feed", cat:"Alle", loading:false};
@@ -330,6 +343,45 @@ function detectCat(src, link, feedCats){
   return src.fallback || "Vermischtes";
 }
 
+/* ---------- Sport erkennen ---------- */
+const SPORT_WORDS = new RegExp("(^|[^a-z])(" + [
+  "sport(?!s?wagen)", "fussball", "bundesliga", "liga", "kreisliga", "bezirksliga", "landesliga", "oberliga", "westfalenliga",
+  "champions league", "europa league", "conference league", "dfb", "uefa", "fifa", "pokal", "spieltag", "tabellenf", "tabellenletzt",
+  "abstiegs", "aufsteiger", "torjaeger", "torwart", "torhueter", "elfmeter", "halbzeit", "schiedsrichter", "trainer",
+  "handball", "basketball", "volleyball", "eishockey", "tischtennis", "tennis", "badminton", "leichtathlet", "marathon", "triathlon",
+  "radrennen", "tour de france", "formel[ -]1", "formel-1", "grand prix", "motogp", "ski[ -]alpin", "biathlon", "skisprung", "skispring",
+  "olympi", "paralympi", "weltcup", "weltmeister", "europameister", "meisterschaft", "turnier", "derby", "kader", "transferfenster",
+  "stuermer", "mittelfeld", "kunstrasen", "sportplatz", "heimsieg", "auswaertssieg", "heimspiel", "auswaertsspiel", "punktspiel",
+  "testspiel", "relegation", "golfplatz", "golfturnier", "reitturnier", "stadtlauf", "volkslauf", "firmenlauf", "spendenlauf",
+  "eisstock", "kegel", "bowling", "judo", "karate", "boxkampf", "boxer", "nba", "nfl", "nhl", "super bowl",
+  "bvb", "schalke", "borussia", "bayern muenchen", "fc bayern", "rb leipzig", "eintracht frankfurt", "arminia", "sc paderborn",
+  "vfl bochum", "sc verl", "rot-weiss essen", "preussen muenster", "hammer spvg", "spvg", "werder bremen", "hertha", "1\\. fc"
+].join("|") + ")");
+const SPORT_CLUB = /(^|[\s(„"'])(SV|TuS|TSV|SuS|FC|SC|VfB|VfL|SpVg|SpVgg|DJK|BSV|TuRa|SSV|RSV|SVE|SVF|SVW|HSV|BVB|SG)(?=[\s,:)–-]|$)/;
+const SPORT_VIA = /sport|kicker|fupa|transfermarkt|11freunde|ran\.de|sport1|laola/i;
+function scoreMatch(text){
+  const re = /(^|[\s(])(\d{1,2}):(\d{1,2})(?=[\s),.!?;]|$)(?!\s*Uhr)/g; let m;
+  while ((m = re.exec(text))){ if (+m[2] <= 15 && +m[3] <= 15) return true; }
+  return false;
+}
+function isSport(it){
+  if (it.cat === "Sport") return true;
+  let path = "";
+  try{ const u = new URL(it.link); if (!/news\.google\./.test(u.hostname)) path = u.pathname.toLowerCase(); }catch(e){}
+  if (/sport|fussball|bundesliga|formel1|handball/.test(path)) return true;
+  if (it.via && SPORT_VIA.test(it.via)) return true;
+  /* Überschrift: ein Treffer genügt. Teaser: erst ab zwei verschiedenen Hinweisen,
+     damit eine Randbemerkung (z. B. „Mitglied im SuS“) keine Nicht-Sport-Meldung ausblendet. */
+  if (SPORT_CLUB.test(it.title) || scoreMatch(it.title) || SPORT_WORDS.test(norm(it.title))) return true;
+  return sportHits(it.teaser || "") >= 2;
+}
+function sportHits(text){
+  const hits = new Set(), g = new RegExp(SPORT_WORDS.source, "g"), n = norm(text); let m;
+  while ((m = g.exec(n))) hits.add(m[2]);
+  const c = new RegExp(SPORT_CLUB.source, "g"); while ((m = c.exec(text))) hits.add(m[2]);
+  return hits.size;
+}
+
 /* ---------- Doppelte Meldungen erkennen ---------- */
 const STOP = new Set(("der die das den dem des ein eine einer eines einem einen und oder aber als auch auf aus bei bis mit nach seit von vor zum zur fuer ueber unter gegen ohne durch wie was wer wird werden wurde wurden ist sind war hat haben hatte nicht noch nur mehr schon jetzt nun doch sich sie ihr ihre sein seine man wir uns dass wenn weil denn dann hier dort heute gestern morgen neue neuen neuer neues erste ersten alle viele immer wieder soll sollen will kann koennen muss muessen live liveblog newsblog ticker video kommentar analyse interview update eilmeldung news plus diese dieser dieses beim vom ins im am an in zu so es um da ab").split(" "));
 function norm(s){ return s.toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss"); }
@@ -441,7 +493,10 @@ function currentClusters(){
   const minDate = Date.now() - settings.hours * 3600e3;
   const activeIds = new Set(sources.filter(s => s.on).map(s => s.id));
   const items = cache.items.filter(i => i.date >= minDate && activeIds.has(i.src) && i.date <= Date.now() + 3600e3);
-  return cluster(items).filter(c => !c.items.some(i => dismissed[i.link]));
+  const read = readLinks();
+  let kept = items;
+  if (settings.hideSport){ kept = items.filter(i => !isSport(i)); state.sportHidden = items.length - kept.length; } else state.sportHidden = 0;
+  return cluster(kept).filter(c => !c.items.some(i => dismissed[i.link] || read.has(i.link)));
 }
 const PIN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>';
 const PIN_ICON_ON = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>';
@@ -452,9 +507,9 @@ function cardHTML(c, mode){
   const srcs = multi ? '<div class="srcs">' + c.items.map(i =>
       `<a class="src" href="${esc(openUrl(i.link))}" target="_blank" rel="noopener">${esc(i.name)} <time>${ago(i.date)}</time></a>`).join("") + "</div>" : "";
   return `<div class="slot" data-id="${esc(c.id)}">
-    <div class="under"><span>${mode === "pins" ? "Entfernen" : "Ausblenden"}</span><span>${mode === "pins" ? "Entfernen" : "Ausblenden"}</span></div>
+    <div class="under"><span>${mode === "feed" ? "Ausblenden" : "Entfernen"}</span><span>${mode === "feed" ? "Ausblenden" : "Entfernen"}</span></div>
     <article class="card" style="--cat:${CAT_VAR(c.cat)}">
-      <div class="meta"><span class="cat">${esc(c.cat)}</span>${multi ? `<span class="multi">${c.items.length} Quellen</span>` : `<span>${esc(c.items[0].name)}</span>`}<span class="sp"></span><span>${ago(c.date)}</span>
+      <div class="meta"><span class="cat">${esc(c.cat)}</span>${multi ? `<span class="multi">${c.items.length} Quellen</span>` : `<span>${esc(c.items[0].name)}</span>`}<span class="sp"></span>${mode === "read" ? `<span class="read-at">gelesen ${new Date(c.readAt).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"})}</span>` : `<span>${ago(c.date)}</span>`}
         <button class="pin" aria-pressed="${pinned}" aria-label="${pinned ? "Nicht mehr merken" : "Für später merken"}">${pinned ? PIN_ICON_ON : PIN_ICON}</button></div>
       <h2><a href="${esc(openUrl(c.items[0].link))}" target="_blank" rel="noopener">${esc(c.title)}</a></h2>
       ${c.teaser ? `<p>${esc(c.teaser)}</p>` : ""}
@@ -464,7 +519,7 @@ function cardHTML(c, mode){
 
 let lastClusters = [];
 function renderChips(){
-  const list = state.view === "pins" ? pins : lastClusters;
+  const list = state.view === "pins" ? pins : state.view === "read" ? readList : lastClusters;
   const counts = {}; list.forEach(c => counts[c.cat] = (counts[c.cat] || 0) + 1);
   const cats = ["Alle", ...CATS.filter(c => counts[c])];
   if (!cats.includes(state.cat)) state.cat = "Alle";
@@ -481,13 +536,34 @@ function renderFeed(){
                            : `<div class="empty"><b>Meldungen werden geladen</b>Die Feeds deiner Quellen werden gerade abgerufen.</div>`;
     return;
   }
-  v.innerHTML = (store.get("hintSeen", false) ? "" : '<div class="hint">Zur Seite wischen blendet eine Meldung aus.</div>') + shown.map(c => cardHTML(c, "feed")).join("");
+  v.innerHTML = (store.get("hintSeen", false) ? "" : '<div class="hint">Antippen öffnet die Meldung und legt sie unter „Gelesen“ ab. Zur Seite wischen blendet sie aus.</div>') + shown.map(c => cardHTML(c, "feed")).join("");
 }
 function renderPins(){
   renderChips();
   const shown = pins.filter(c => state.cat === "Alle" || c.cat === state.cat).sort((a,b) => b.pinnedAt - a.pinnedAt);
   $("view-pins").innerHTML = shown.length ? shown.map(c => cardHTML(c, "pins")).join("")
     : '<div class="empty"><b>Noch nichts gemerkt</b>Tippe bei einer Meldung auf das Lesezeichen, um sie hier für später abzulegen.</div>';
+}
+function dayLabel(t){
+  const d = new Date(t), today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.round((today - new Date(d).setHours(0,0,0,0)) / 86400e3);
+  if (diff === 0) return "Heute"; if (diff === 1) return "Gestern";
+  return d.toLocaleDateString("de-DE", {weekday:"long", day:"numeric", month:"long"});
+}
+function renderRead(){
+  renderChips();
+  const shown = readList.filter(c => state.cat === "Alle" || c.cat === state.cat).sort((a,b) => b.readAt - a.readAt);
+  if (!shown.length){
+    $("view-read").innerHTML = '<div class="empty"><b>Noch nichts gelesen</b>Tippst du unter „Aktuell“ auf eine Meldung, landet sie hier. Weggewischte Meldungen erscheinen hier nicht.</div>';
+    return;
+  }
+  let html = "", last = "";
+  for (const c of shown){
+    const l = dayLabel(c.readAt);
+    if (l !== last){ html += `<h3 class="day">${esc(l)}</h3>`; last = l; }
+    html += cardHTML(c, "read");
+  }
+  $("view-read").innerHTML = html;
 }
 function updateStamp(){
   const d = new Date();
@@ -499,6 +575,7 @@ function render(){
   updateStamp();
   if (state.view === "feed") renderFeed();
   else if (state.view === "pins") renderPins();
+  else if (state.view === "read") renderRead();
   else renderSettings(cache.status);
 }
 
@@ -525,6 +602,7 @@ function renderSettings(status){
     <div class="row"><div class="lbl">Erscheinungsbild</div>${seg("theme", [["system","System"],["light","Hell"],["dark","Dunkel"]])}</div>
     <div class="row"><div class="lbl">Zeitraum<small>Wie alt Meldungen höchstens sein dürfen</small></div>${seg("hours", [[24,"24 Std"],[48,"48 Std"],[168,"7 Tage"]])}</div>
     <div class="row"><div class="lbl">Doppelte Meldungen zusammenfassen<small>Gleiches Thema aus mehreren Quellen als eine Karte</small></div><label class="switch"><input type="checkbox" id="merge" ${settings.merge ? "checked" : ""}><span></span></label></div>
+    <div class="row"><div class="lbl">Sportmeldungen ausblenden<small>${settings.hideSport ? "Gerade " + (state.sportHidden || 0) + " Meldungen mit Sportbezug ausgeblendet" : "Erkennt Sport auch in Lokal- und Vermischtes-Meldungen"}</small></div><label class="switch"><input type="checkbox" id="hideSport" ${settings.hideSport ? "checked" : ""}><span></span></label></div>
   </div></div>
   <div class="sect"><h3>Beim Antippen öffnen</h3><div class="group">
     <div class="row"><div class="lbl">Ziel<small>${settings.open === "archive" ? "Lädt den Artikel über archive.ph" : "Öffnet die Seite der Quelle"}</small></div>${seg("open", [["original","Originalseite"],["archive","archive.ph"]])}</div>
@@ -549,6 +627,7 @@ function renderSettings(status){
   </div></div>
   <div class="sect"><h3>Zurücksetzen</h3><div class="group">
     <div class="row"><div class="lbl">Ausgeblendete Meldungen<small>${Object.keys(dismissed).length} ausgeblendet</small></div><button class="btn ghost" id="resetDismissed">Wieder zeigen</button></div>
+    <div class="row"><div class="lbl">Gelesene Meldungen<small>${readList.length} im Bereich „Gelesen“ · nach 14 Tagen automatisch gelöscht</small></div><button class="btn ghost" id="clearRead">Leeren</button></div>
     <div class="row"><div class="lbl">Quellenliste<small>Stellt die vorgeschlagenen Quellen wieder her</small></div><button class="btn ghost" id="resetSources">Standard</button></div>
   </div></div>
   <p class="note">Alle Einstellungen, gemerkten und ausgeblendeten Meldungen bleiben nur auf diesem Gerät gespeichert.</p>`;
@@ -565,7 +644,24 @@ function toast(msg, undo){
 $("toastUndo").addEventListener("click", () => { if (undoFn) undoFn(); $("toast").hidden = true; });
 
 /* ---------- Aktionen ---------- */
-function findCluster(id){ return lastClusters.find(c => c.id === id) || pins.find(p => p.id === id); }
+function findCluster(id){ return lastClusters.find(c => c.id === id) || pins.find(p => p.id === id) || readList.find(r => r.id === id); }
+function collapse(slot, then){
+  slot.style.height = slot.offsetHeight + "px";
+  requestAnimationFrame(() => { slot.style.height = "0px"; slot.style.opacity = "0"; slot.style.marginBottom = "-10px"; });
+  setTimeout(then, 260);
+}
+function markRead(id, slot){
+  const c = findCluster(id); if (!c) return;
+  const existing = readList.find(r => r.id === id);
+  if (existing){ existing.readAt = Date.now(); saveRead(); return; }
+  const {pinnedAt, ...rest} = c;
+  readList.push({...rest, readAt: Date.now()}); saveRead(); store.set("hintSeen", true);
+  if (state.view !== "feed") return;
+  collapse(slot, () => {
+    render();
+    toast("Unter „Gelesen“ abgelegt", () => { readList = readList.filter(r => r.id !== id); saveRead(); render(); });
+  });
+}
 function togglePin(id){
   const i = pins.findIndex(p => p.id === id);
   if (i >= 0){ pins.splice(i, 1); toast("Nicht mehr gemerkt"); }
@@ -580,6 +676,12 @@ function removeAfterSwipe(slot, id){
       const idx = pins.findIndex(p => p.id === id); const removed = pins.splice(idx, 1)[0];
       store.set("pins", pins); render();
       toast("Aus „Gemerkt“ entfernt", () => { pins.push(removed); store.set("pins", pins); render(); });
+    } else if (state.view === "read"){
+      const removed = readList.find(r => r.id === id); if (!removed) return;
+      const now = Date.now();
+      readList = readList.filter(r => r.id !== id); removed.items.forEach(i => dismissed[i.link] = now);
+      saveRead(); store.set("dismissed", dismissed); render();
+      toast("Aus „Gelesen“ entfernt", () => { readList.push(removed); removed.items.forEach(i => delete dismissed[i.link]); saveRead(); store.set("dismissed", dismissed); render(); });
     } else {
       const c = findCluster(id); if (!c) return;
       const now = Date.now(); c.items.forEach(i => dismissed[i.link] = now);
@@ -624,6 +726,7 @@ document.addEventListener("click", e => {
   if (card && card.dataset.dragged){ e.preventDefault(); e.stopPropagation(); return; }
   const pin = e.target.closest(".pin"); if (pin){ togglePin(pin.closest(".slot").dataset.id); return; }
   if (card && !e.target.closest("a")){ card.querySelector("h2 a").click(); return; }
+  const link = e.target.closest(".card a"); if (link){ const slot = link.closest(".slot"); markRead(slot.dataset.id, slot); return; }
   const chip = e.target.closest(".chip"); if (chip){ state.cat = chip.dataset.cat; render(); window.scrollTo({top:0}); return; }
   const tab = e.target.closest(".tab"); if (tab){ setView(tab.dataset.view); return; }
   const segBtn = e.target.closest(".seg button"); if (segBtn){
@@ -636,6 +739,12 @@ document.addEventListener("click", e => {
     sources.splice(idx, 1); saveAll(); render();
     toast(removed.name + " entfernt", () => { sources.splice(idx, 0, removed); saveAll(); render(); }); return;
   }
+  if (e.target.id === "clearRead"){
+    const old = readList, oldDis = {...dismissed}, now = Date.now();
+    readList.forEach(c => c.items.forEach(i => dismissed[i.link] = now));
+    readList = []; saveRead(); saveAll(); render();
+    toast("Bereich „Gelesen“ geleert", () => { readList = old; dismissed = oldDis; saveRead(); saveAll(); render(); }); return;
+  }
   if (e.target.id === "resetDismissed"){ const old = dismissed; dismissed = {}; saveAll(); render(); toast("Ausgeblendete Meldungen werden wieder gezeigt", () => { dismissed = old; saveAll(); render(); }); return; }
   if (e.target.id === "resetSources"){
     const old = sources; sources = DEFAULT_SOURCES.map(s => ({...s})); saveAll(); render(); refresh();
@@ -646,6 +755,7 @@ document.addEventListener("change", e => {
   const t = e.target;
   if (t.dataset.toggle){ const s = sources.find(x => x.id === t.dataset.toggle); s.on = t.checked; saveAll(); if (s.on) refresh(); else render(); }
   else if (t.id === "merge"){ settings.merge = t.checked; saveAll(); render(); }
+  else if (t.id === "hideSport"){ settings.hideSport = t.checked; saveAll(); currentClusters(); render(); }
   else if (t.id === "proxySel"){ settings.proxy = t.value; saveAll(); render(); }
   else if (t.id === "customProxy"){ settings.customProxy = t.value.trim(); saveAll(); }
 });
@@ -670,7 +780,7 @@ document.addEventListener("submit", async e => {
 function setView(v){
   state.view = v; state.cat = "Alle";
   document.querySelectorAll(".tab").forEach(t => { if (t.dataset.view === v) t.setAttribute("aria-current","page"); else t.removeAttribute("aria-current"); });
-  ["feed","pins","settings"].forEach(n => $("view-" + n).hidden = n !== v);
+  ["feed","pins","read","settings"].forEach(n => $("view-" + n).hidden = n !== v);
   render(); window.scrollTo({top:0});
 }
 $("refresh").addEventListener("click", refresh);
