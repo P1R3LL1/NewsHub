@@ -310,8 +310,20 @@ function parseFeed(xml, src){
   return out;
 }
 /* gemeinsame Nachbearbeitung – für Feeds aus dem Browser und aus feeds.json */
+/* Entfernt RSS-Kennungen (#ref=rss, ?wt_mc=rss…, utm_…, Golem „-rss.html“), damit archive.ph die echte Artikeladresse bekommt */
+function cleanLink(u){
+  try{
+    const x = new URL(u);
+    x.hash = "";
+    for (const k of [...x.searchParams.keys()]){
+      if (/^(utm_|wt_|at_|sara_|ns_|mc_)|^(ref|xtor|cmpid|fbclid|gclid|ocid|rss|feed|reduced)$/i.test(k)) x.searchParams.delete(k);
+    }
+    if (/(^|\.)golem\.de$/.test(x.hostname)) x.pathname = x.pathname.replace(/-rss\.html$/, ".html");
+    return x.toString();
+  }catch(e){ return u; }
+}
 function finalize(r, src){
-  let {title, teaser, link, date} = r, via = "";
+  let {title, teaser, date} = r, via = "", link = cleanLink(r.link);
   teaser = teaser || "";
   if (teaser.length > 260) teaser = teaser.slice(0, 250).replace(/\s\S*$/,"") + " …";
   if (/news\.google\./.test(src.url)){
@@ -490,7 +502,8 @@ function pruneDismissed(){
 /* ---------- Darstellung ---------- */
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const openUrl = u => settings.open === "archive" ? "https://archive.ph/newest/" + u : u;
+/* Google-News-Weiterleitungen, die nicht aufgelöst werden konnten, kann archive.ph nicht laden – die öffnen direkt */
+const openUrl = u => settings.open === "archive" && !/^https:\/\/news\.google\./.test(u) ? "https://archive.ph/newest/" + u : u;
 function ago(t){
   const m = Math.round((Date.now() - t) / 60000);
   if (m < 1) return "jetzt"; if (m < 60) return m + " Min";

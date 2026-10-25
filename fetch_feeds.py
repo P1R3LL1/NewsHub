@@ -1,5 +1,5 @@
 """Holt alle Standardquellen aus index.html und schreibt site/feeds.json."""
-import email.utils, html, json, re, sys, time, urllib.parse, urllib.request
+import email.utils, html, json, os, re, sys, time, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import xml.etree.ElementTree as ET
@@ -81,6 +81,75 @@ with ThreadPoolExecutor(8) as pool:
 
 for u, f in feeds.items():
     print(("OK   %3d" % len(f["items"])) if f["ok"] else "FAIL    ", u, "" if f["ok"] else f["error"])
+
+# ---------- Google-News-Weiterleitungen in echte Artikeladressen auflösen ----------
+# Bereits aufgelöste Links aus der zuletzt veröffentlichten feeds.json übernehmen,
+# damit pro Lauf nur neue Meldungen bei Google nachgefragt werden.
+GN_ID = re.compile(r"news\.google\.com/(?:rss/)?articles/([A-Za-z0-9_-]+)")
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+known = {}
+try:
+    owner, repo = os.environ["GITHUB_REPOSITORY"].split("/")
+    prev_url = "https://%s.github.io/%s/feeds.json" % (owner.lower(), repo)
+    with urllib.request.urlopen(urllib.request.Request(prev_url, headers={"User-Agent": UA}), timeout=20) as r:
+        prev = json.load(r)
+    for f in prev.get("feeds", {}).values():
+        for it in f.get("items", []) or []:
+            if it.get("gn") and "news.google." not in it["link"]:
+                known[it["gn"]] = it["link"]
+    print("Cache: %d aufgelöste Google-Links übernommen" % len(known))
+except Exception as ex:
+    print("Cache nicht verfügbar:", ex)
+
+def http(url, data=None, headers=None):
+    req = urllib.request.Request(url, data=data, headers={"User-Agent": UA, **(headers or {})})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return r.read().decode("utf-8", "replace")
+
+def gn_resolve(aid):
+    sig = ts = None
+    for page in ("https://news.google.com/articles/" + aid, "https://news.google.com/rss/articles/" + aid):
+        try:
+            h = http(page)
+        except Exception:
+            continue
+        ms, mt = re.search(r'data-n-a-sg="([^"]+)"', h), re.search(r'data-n-a-ts="([^"]+)"', h)
+        if ms and mt:
+            sig, ts = ms.group(1), mt.group(1); break
+    if not sig:
+        return None
+    inner = ('["garturlreq",[["X","X",["X","X"],null,null,1,1,"US:en",null,1,null,null,null,null,null,0,1],'
+             '"X","X",1,[1,1,1],1,1,null,0,0,null,0],"%s",%s,"%s"]') % (aid, ts, sig)
+    body = "f.req=" + urllib.parse.quote(json.dumps([[["Fbv4je", inner, None, "generic"]]]))
+    txt = http("https://news.google.com/_/DotsSplashUi/data/batchexecute", body.encode(),
+               {"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"})
+    data = json.loads(txt.split("\n\n", 1)[1])[:-2]
+    url = json.loads(data[0][2])[1]
+    return url if isinstance(url, str) and url.startswith("http") else None
+
+resolved = failed = 0
+budget = 150
+for f in feeds.values():
+    for it in f.get("items", []) if f["ok"] else []:
+        m = GN_ID.search(it["link"])
+        if not m:
+            continue
+        gn = it["link"]; it["gn"] = gn
+        if gn in known:
+            it["link"] = known[gn]; continue
+        if budget <= 0:
+            continue
+        budget -= 1
+        try:
+            real = gn_resolve(m.group(1))
+        except Exception:
+            real = None
+        if real:
+            it["link"] = known[gn] = real; resolved += 1
+        else:
+            failed += 1
+        time.sleep(0.4)
+print("Google-Links: %d neu aufgelöst, %d nicht auflösbar" % (resolved, failed))
 
 out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 with open(out_dir + "/feeds.json", "w", encoding="utf-8") as fh:
