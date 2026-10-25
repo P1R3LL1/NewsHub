@@ -198,10 +198,11 @@ const DEFAULT_SOURCES = [
   {id:"gn-soest", name:"Kreis Soest & Hamm (Google News)", url:GN("Welver OR Werl OR Soest OR Hamm Westfalen when:2d"), cat:"Regional", group:"Regional", on:true}
 ];
 
+/* Ersatzweg für Quellen, die (noch) nicht vom GitHub-Abruf geholt werden */
 const PROXIES = {
-  allorigins: u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-  corsproxy:  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
-  codetabs:   u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
+  allorigins: Object.assign(u => "https://api.allorigins.win/get?url=" + encodeURIComponent(u), {json:true}),
+  allorigins_raw: u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  codetabs: u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
 };
 
 /* ---------- Speicher ---------- */
@@ -216,6 +217,7 @@ let pins = store.get("pins", []);                     // gespeicherte Cluster
 let cache = store.get("cache", {items:[], at:0, status:{}});
 let proxyHint = store.get("proxyHint", {});           // Quelle -> zuletzt funktionierender Dienst
 let state = {view:"feed", cat:"Alle", loading:false};
+let serverInfo = {at: 0};                              // Stand der feeds.json vom GitHub-Abruf
 
 function saveAll(){ store.set("settings", settings); store.set("sources", sources); store.set("dismissed", dismissed); store.set("pins", pins); }
 
@@ -238,15 +240,22 @@ function proxyOrder(srcId){
   if (hint && names.includes(hint)) names.sort((a,b) => (b === hint) - (a === hint));
   return names.map(n => Object.assign(PROXIES[n], {pname:n}));
 }
+function decodeDataUrl(s){
+  if (!s.startsWith("data:")) return s;
+  const i = s.indexOf(","), meta = s.slice(0, i), body = s.slice(i + 1);
+  if (!/;base64/.test(meta)) return decodeURIComponent(body);
+  return new TextDecoder().decode(Uint8Array.from(atob(body), c => c.charCodeAt(0)));
+}
 async function fetchText(url, srcId){
   let lastErr;
   for (const p of proxyOrder(srcId)){
-    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 12000);
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
     try{
       const res = await fetch(p(url), {signal:ctrl.signal});
       clearTimeout(t);
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const txt = await res.text();
+      if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? "Abruf-Dienst verweigert (" + res.status + ")" : "HTTP " + res.status);
+      let txt = await res.text();
+      if (p.json){ const j = JSON.parse(txt); txt = decodeDataUrl(j.contents || ""); }
       if (!/<(rss|feed|rdf:RDF|channel)[\s>]/i.test(txt)) throw new Error("kein Feed");
       if (p.pname){ proxyHint[srcId] = p.pname; store.set("proxyHint", proxyHint); }
       return txt;
@@ -273,17 +282,32 @@ function parseFeed(xml, src){
     if (teaser.length > 260) teaser = teaser.slice(0, 250).replace(/\s\S*$/,"") + " …";
     const dateStr = kidText(e,["pubDate","date","published","updated"]);
     let date = Date.parse(dateStr); if (isNaN(date)) date = Date.now();
-    const feedCats = kids(e,["category","subject"]).map(c => (c.textContent || c.getAttribute("term") || "").toLowerCase()).filter(Boolean);
-    let via = "";
-    if (/news\.google\./.test(src.url)){
-      const s = kids(e,["source"])[0]; via = s ? s.textContent.trim() : "";
-      if (via && title.endsWith(" - " + via)) title = title.slice(0, -(via.length + 3));
-      if (teaser.startsWith(title)) teaser = "";
-    }
-    if (teaser && teaser.toLowerCase() === title.toLowerCase()) teaser = "";
-    out.push({title, teaser, link, date, src:src.id, srcName:src.name, via, cat: detectCat(src, link, feedCats)});
+    const cats = kids(e,["category","subject"]).map(c => (c.textContent || c.getAttribute("term") || "").toLowerCase()).filter(Boolean);
+    const s = kids(e,["source"])[0];
+    out.push(finalize({title, teaser, link, date, cats, via: s ? s.textContent.trim() : ""}, src));
   }
   return out;
+}
+/* gemeinsame Nachbearbeitung – für Feeds aus dem Browser und aus feeds.json */
+function finalize(r, src){
+  let {title, teaser, link, date} = r, via = "";
+  teaser = teaser || "";
+  if (teaser.length > 260) teaser = teaser.slice(0, 250).replace(/\s\S*$/,"") + " …";
+  if (/news\.google\./.test(src.url)){
+    via = r.via || "";
+    if (via && title.endsWith(" - " + via)) title = title.slice(0, -(via.length + 3));
+    if (teaser.startsWith(title)) teaser = "";
+  }
+  if (teaser && teaser.toLowerCase() === title.toLowerCase()) teaser = "";
+  return {title, teaser, link, date: date || Date.now(), src:src.id, srcName:src.name, via, cat: detectCat(src, link, r.cats || [])};
+}
+async function loadSnapshot(){
+  try{
+    const res = await fetch("feeds.json?t=" + Date.now(), {cache:"no-store"});
+    if (!res.ok) return null;
+    const j = await res.json();
+    return j && j.feeds ? j : null;
+  }catch(e){ return null; }
 }
 
 const CAT_KEYS = [
@@ -367,11 +391,22 @@ async function refresh(){
   const active = sources.filter(s => s.on);
   let done = 0; const prog = document.getElementById("prog"); prog.style.width = "4%";
   const all = []; const status = {};
+  const snap = await loadSnapshot();
+  serverInfo = snap ? {at: snap.at} : {at: 0};
   await Promise.all(active.map(async s => {
+    const f = snap && snap.feeds[s.url];
     try{
-      const items = parseFeed(await fetchText(s.url, s.id), s);
-      all.push(...items); status[s.id] = {ok:true, n:items.length, at:Date.now()};
+      let items;
+      if (f && f.ok){
+        items = f.items.map(r => finalize(r, s));
+        status[s.id] = {ok:true, n:items.length, at:snap.at, via:"server"};
+      } else {
+        items = parseFeed(await fetchText(s.url, s.id), s);
+        status[s.id] = {ok:true, n:items.length, at:Date.now(), via:"proxy"};
+      }
+      all.push(...items);
     }catch(e){
+      if (f && !f.ok) e = new Error("Quelle meldet: " + (f.error || "Fehler"));
       status[s.id] = {ok:false, msg: e.name === "AbortError" ? "Zeitüberschreitung" : (e.message || "Fehler"), at:Date.now()};
       const old = cache.items.filter(i => i.src === s.id); all.push(...old);
     }
@@ -379,7 +414,7 @@ async function refresh(){
     if (state.view === "settings") renderSettings(status);
   }));
   const seen = new Set();
-  cache = {items: all.filter(i => !seen.has(i.link) && seen.add(i.link)), at: Date.now(), status};
+  cache = {items: all.filter(i => !seen.has(i.link) && seen.add(i.link)), at: Date.now(), dataAt: snap ? snap.at : Date.now(), status};
   store.set("cache", cache);
   pruneDismissed();
   state.loading = false; btn.classList.remove("spin");
@@ -457,7 +492,7 @@ function renderPins(){
 function updateStamp(){
   const d = new Date();
   const day = d.toLocaleDateString("de-DE", {weekday:"long", day:"numeric", month:"long"});
-  $("stamp").textContent = cache.at ? day + " · Stand " + new Date(cache.at).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}) : day;
+  $("stamp").textContent = cache.at ? day + " · Stand " + new Date(cache.dataAt || cache.at).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}) : day;
   $("pinCount").textContent = pins.length ? pins.length : "";
 }
 function render(){
@@ -476,7 +511,9 @@ function renderSettings(status){
   const srcRows = g => sources.filter(s => (s.group || "Eigene") === g).map(s => {
     const st = status[s.id];
     const stHTML = !s.on ? '<span class="status idle">aus</span>' : !st ? '<span class="status idle">–</span>' : st.ok ? `<span class="status ok">${st.n} ${st.n === 1 ? "Meldung" : "Meldungen"}</span>` : `<span class="status err" title="${esc(st.msg)}">Fehler</span>`;
-    return `<div class="row"><div class="lbl">${esc(s.name)}<small>${s.cat === "auto" ? "Kategorie automatisch" : esc(s.cat)} · ${esc(s.url.replace(/^https?:\/\//,""))}</small></div>${stHTML}
+    const sub = st && !st.ok && s.on ? `<small class="err-msg">${esc(st.msg)}</small>`
+      : `<small>${s.cat === "auto" ? "Kategorie automatisch" : esc(s.cat)} · ${st && st.via === "proxy" ? "über Ersatz-Dienst" : esc(s.url.replace(/^https?:\/\//,""))}</small>`;
+    return `<div class="row"><div class="lbl">${esc(s.name)}${sub}</div>${stHTML}
       <button class="del" data-del="${esc(s.id)}" aria-label="${esc(s.name)} entfernen">${TRASH}</button>
       <label class="switch"><input type="checkbox" id="on-${esc(s.id)}" data-toggle="${esc(s.id)}" ${s.on ? "checked" : ""} aria-label="${esc(s.name)} aktiv"><span></span></label></div>`;
   }).join("");
@@ -502,9 +539,11 @@ function renderSettings(status){
   </form></div>
   <p class="note">Tipp: Für ein Stichwort ohne eigenen Feed geht auch eine Google-News-Suche, z. B. https://news.google.com/rss/search?q=Welver&amp;hl=de&amp;gl=DE&amp;ceid=DE:de</p></div>
   <div class="sect"><h3>Abruf</h3><div class="group">
-    <div class="row"><div class="lbl">Abruf-Dienst<small>Leitet die Feeds an die App weiter</small></div>
+    <div class="row"><div class="lbl">GitHub-Abruf<small>${serverInfo.at ? "Aktiv · letzter Abruf " + new Date(serverInfo.at).toLocaleString("de-DE", {weekday:"short", hour:"2-digit", minute:"2-digit"}) : "Nicht gefunden – feeds.json fehlt im Repository"}</small></div>
+      <span class="status ${serverInfo.at ? (Date.now() - serverInfo.at < 3 * 3600e3 ? "ok" : "err") : "err"}">${serverInfo.at ? (Date.now() - serverInfo.at < 3 * 3600e3 ? "läuft" : "veraltet") : "aus"}</span></div>
+    <div class="row"><div class="lbl">Ersatz-Dienst<small>Für eigene Quellen, die der GitHub-Abruf nicht kennt</small></div>
       <select id="proxySel" style="padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg)">
-        ${[["auto","Automatisch"],["allorigins","allorigins"],["corsproxy","corsproxy.io"],["codetabs","codetabs"],["custom","Eigener"]].map(([k,l]) => `<option value="${k}" ${settings.proxy === k ? "selected" : ""}>${l}</option>`).join("")}
+        ${[["auto","Automatisch"],["allorigins","allorigins"],["codetabs","codetabs"],["custom","Eigener"]].map(([k,l]) => `<option value="${k}" ${settings.proxy === k ? "selected" : ""}>${l}</option>`).join("")}
       </select></div>
     <div class="row" ${settings.proxy === "custom" ? "" : "hidden"}><input id="customProxy" style="flex:1;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px" placeholder="https://mein-proxy.example/?url=" value="${esc(settings.customProxy)}"></div>
   </div></div>
