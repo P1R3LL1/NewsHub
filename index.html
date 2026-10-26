@@ -508,9 +508,9 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">"
    die App kopiert die Adresse in die Zwischenablage und öffnet die Startseite des Dienstes. */
 const OPENERS = {
   original:      {label:"Originalseite",  note:"Öffnet die Seite der Quelle"},
-  removepaywall: {label:"RemovePaywall",  note:"Öffnet den Artikel direkt über removepaywall.com", direct: u => "https://www.removepaywall.com/" + u},
-  unwall:        {label:"unwall.app",     note:"Kopiert die Artikeladresse und öffnet unwall.app – dort nur noch einfügen", copy:"https://unwall.app/"},
-  paywallskipper:{label:"Paywall Skipper",note:"Kopiert die Artikeladresse und öffnet paywallskipper.com – dort nur noch einfügen", copy:"https://paywallskipper.com/"},
+  removepaywall: {label:"RemovePaywall",  note:"Öffnet den Artikel über removepaywall.com", direct: u => "https://www.removepaywall.com/search?url=" + u},
+  unwall:        {label:"unwall.app",     note:"Öffnet den Artikel über unwall.app", direct: u => "https://unwall.app/" + u.replace(/^https?:\/\//, "")},
+  paywallskipper:{label:"Paywall Skipper",note:"Öffnet den Artikel über paywallskipper.com", direct: u => "https://paywallskipper.com/r?url=" + encodeURIComponent(u)},
   custom:        {label:"Eigene Vorlage", note:"Eigene Adresse mit {url} als Platzhalter"}
 };
 function openUrl(u){
