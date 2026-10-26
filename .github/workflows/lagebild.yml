@@ -2,7 +2,7 @@ name: Feeds abrufen
  
 on:
   schedule:
-    - cron: "*/20 * * * *"
+    - cron: "17 */3 * * *"
   push:
     branches: [main]
   workflow_dispatch:

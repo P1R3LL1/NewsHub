@@ -216,7 +216,8 @@ const store = {
   get(k, d){ try{ const v = localStorage.getItem("lagebild:" + k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem("lagebild:" + k, JSON.stringify(v)); }catch(e){} }
 };
-let settings = Object.assign({theme:"system", open:"original", hours:24, merge:true, hideSport:true, proxy:"auto", customProxy:""}, store.get("settings", {}));
+let settings = Object.assign({theme:"system", open:"original", hours:24, merge:true, hideSport:true, proxy:"auto", customProxy:"", openTpl:""}, store.get("settings", {}));
+if (settings.open === "archive") settings.open = "original";   // archive.ph wurde entfernt
 let sources = store.get("sources", null) || DEFAULT_SOURCES.map(s => ({...s}));
 let dismissed = store.get("dismissed", {});          // link -> Zeitstempel
 let pins = store.get("pins", []);                     // gespeicherte Cluster
@@ -503,7 +504,23 @@ function pruneDismissed(){
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 /* Google-News-Weiterleitungen, die nicht aufgelöst werden konnten, kann archive.ph nicht laden – die öffnen direkt */
-const openUrl = u => settings.open === "archive" && !/^https:\/\/news\.google\./.test(u) ? "https://archive.ph/newest/" + u : u;
+/* Ziele beim Antippen. "direct": Artikeladresse wird übergeben. "copy": Dienst bietet keinen Direktlink –
+   die App kopiert die Adresse in die Zwischenablage und öffnet die Startseite des Dienstes. */
+const OPENERS = {
+  original:      {label:"Originalseite",  note:"Öffnet die Seite der Quelle"},
+  removepaywall: {label:"RemovePaywall",  note:"Öffnet den Artikel direkt über removepaywall.com", direct: u => "https://www.removepaywall.com/" + u},
+  unwall:        {label:"unwall.app",     note:"Kopiert die Artikeladresse und öffnet unwall.app – dort nur noch einfügen", copy:"https://unwall.app/"},
+  paywallskipper:{label:"Paywall Skipper",note:"Kopiert die Artikeladresse und öffnet paywallskipper.com – dort nur noch einfügen", copy:"https://paywallskipper.com/"},
+  custom:        {label:"Eigene Vorlage", note:"Eigene Adresse mit {url} als Platzhalter"}
+};
+function openUrl(u){
+  if (/^https:\/\/news\.google\./.test(u)) return u;          // nicht aufgelöste Google-Weiterleitung: direkt öffnen
+  const o = OPENERS[settings.open] || OPENERS.original;
+  if (o.direct) return o.direct(u);
+  if (o.copy) return o.copy;
+  if (settings.open === "custom" && settings.openTpl.includes("{url}")) return settings.openTpl.replace("{url}", encodeURIComponent(u)).replace("{rawurl}", u);
+  return u;
+}
 function ago(t){
   const m = Math.round((Date.now() - t) / 60000);
   if (m < 1) return "jetzt"; if (m < 60) return m + " Min";
@@ -526,13 +543,13 @@ function cardHTML(c, mode){
   const pinned = pins.some(p => p.id === c.id);
   const multi = c.items.length > 1;
   const srcs = multi ? '<div class="srcs">' + c.items.map(i =>
-      `<a class="src" href="${esc(openUrl(i.link))}" target="_blank" rel="noopener">${esc(i.name)} <time>${ago(i.date)}</time></a>`).join("") + "</div>" : "";
+      `<a class="src" href="${esc(openUrl(i.link))}" data-u="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.name)} <time>${ago(i.date)}</time></a>`).join("") + "</div>" : "";
   return `<div class="slot" data-id="${esc(c.id)}">
     <div class="under"><span>${mode === "feed" ? "Ausblenden" : "Entfernen"}</span><span>${mode === "feed" ? "Ausblenden" : "Entfernen"}</span></div>
     <article class="card" style="--cat:${CAT_VAR(c.cat)}">
       <div class="meta"><span class="cat">${esc(c.cat)}</span>${multi ? `<span class="multi">${c.items.length} Quellen</span>` : `<span>${esc(c.items[0].name)}</span>`}<span class="sp"></span>${mode === "read" ? `<span class="read-at">gelesen ${new Date(c.readAt).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"})}</span>` : `<span>${ago(c.date)}</span>`}
         <button class="pin" aria-pressed="${pinned}" aria-label="${pinned ? "Nicht mehr merken" : "Für später merken"}">${pinned ? PIN_ICON_ON : PIN_ICON}</button></div>
-      <h2><a href="${esc(openUrl(c.items[0].link))}" target="_blank" rel="noopener">${esc(c.title)}</a></h2>
+      <h2><a href="${esc(openUrl(c.items[0].link))}" data-u="${esc(c.items[0].link)}" target="_blank" rel="noopener">${esc(c.title)}</a></h2>
       ${c.teaser ? `<p>${esc(c.teaser)}</p>` : ""}
       ${srcs}
     </article></div>`;
@@ -626,7 +643,11 @@ function renderSettings(status){
     <div class="row"><div class="lbl">Sportmeldungen ausblenden<small>${settings.hideSport ? "Gerade " + (state.sportHidden || 0) + " Meldungen mit Sportbezug ausgeblendet" : "Erkennt Sport auch in Lokal- und Vermischtes-Meldungen"}</small></div><label class="switch"><input type="checkbox" id="hideSport" ${settings.hideSport ? "checked" : ""}><span></span></label></div>
   </div></div>
   <div class="sect"><h3>Beim Antippen öffnen</h3><div class="group">
-    <div class="row"><div class="lbl">Ziel<small>${settings.open === "archive" ? "Lädt den Artikel über archive.ph" : "Öffnet die Seite der Quelle"}</small></div>${seg("open", [["original","Originalseite"],["archive","archive.ph"]])}</div>
+    <div class="row"><div class="lbl">Ziel<small>${esc((OPENERS[settings.open] || OPENERS.original).note)}</small></div>
+      <select id="openSel" aria-label="Ziel beim Antippen" style="padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);max-width:48%">
+        ${Object.entries(OPENERS).map(([k,o]) => `<option value="${k}" ${settings.open === k ? "selected" : ""}>${o.label}</option>`).join("")}
+      </select></div>
+    <div class="row" ${settings.open === "custom" ? "" : "hidden"}><input id="openTpl" autocapitalize="off" inputmode="url" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px" placeholder="https://beispiel.de/?url={url}" value="${esc(settings.openTpl)}"></div>
   </div></div>
   ${groups.map(g => { const r = srcRows(g); return r ? `<div class="sect"><h3>Quellen · ${g}</h3><div class="group">${r}</div></div>` : ""; }).join("")}
   <div class="sect"><h3>Quelle hinzufügen</h3><div class="group"><form class="form" id="addForm">
@@ -639,7 +660,7 @@ function renderSettings(status){
   <p class="note">Tipp: Für ein Stichwort ohne eigenen Feed geht auch eine Google-News-Suche, z. B. https://news.google.com/rss/search?q=Welver&amp;hl=de&amp;gl=DE&amp;ceid=DE:de</p></div>
   <div class="sect"><h3>Abruf</h3><div class="group">
     <div class="row"><div class="lbl">GitHub-Abruf<small>${serverInfo.at ? "Aktiv · letzter Abruf " + new Date(serverInfo.at).toLocaleString("de-DE", {weekday:"short", hour:"2-digit", minute:"2-digit"}) : "Nicht gefunden – feeds.json fehlt im Repository"}</small></div>
-      <span class="status ${serverInfo.at ? (Date.now() - serverInfo.at < 3 * 3600e3 ? "ok" : "err") : "err"}">${serverInfo.at ? (Date.now() - serverInfo.at < 3 * 3600e3 ? "läuft" : "veraltet") : "aus"}</span></div>
+      <span class="status ${serverInfo.at ? (Date.now() - serverInfo.at < 7 * 3600e3 ? "ok" : "err") : "err"}">${serverInfo.at ? (Date.now() - serverInfo.at < 7 * 3600e3 ? "läuft" : "veraltet") : "aus"}</span></div>
     <div class="row"><div class="lbl">Ersatz-Dienst<small>Für eigene Quellen, die der GitHub-Abruf nicht kennt</small></div>
       <select id="proxySel" style="padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg)">
         ${[["auto","Automatisch"],["allorigins","allorigins"],["codetabs","codetabs"],["custom","Eigener"]].map(([k,l]) => `<option value="${k}" ${settings.proxy === k ? "selected" : ""}>${l}</option>`).join("")}
@@ -752,7 +773,13 @@ document.addEventListener("click", e => {
   if (card && card.dataset.dragged){ e.preventDefault(); e.stopPropagation(); return; }
   const pin = e.target.closest(".pin"); if (pin){ togglePin(pin.closest(".slot").dataset.id); return; }
   if (card && !e.target.closest("a")){ card.querySelector("h2 a").click(); return; }
-  const link = e.target.closest(".card a"); if (link){ const slot = link.closest(".slot"); markRead(slot.dataset.id, slot); return; }
+  const link = e.target.closest(".card a"); if (link){
+    const o = OPENERS[settings.open];
+    if (o && o.copy && link.dataset.u && !/^https:\/\/news\.google\./.test(link.dataset.u)){
+      try{ navigator.clipboard.writeText(link.dataset.u).catch(() => {}); }catch(_){}
+    }
+    const slot = link.closest(".slot"); markRead(slot.dataset.id, slot); return;
+  }
   const chip = e.target.closest(".chip"); if (chip){ state.cat = chip.dataset.cat; render(); window.scrollTo({top:0}); return; }
   const tab = e.target.closest(".tab"); if (tab){ setView(tab.dataset.view); return; }
   const segBtn = e.target.closest(".seg button"); if (segBtn){
@@ -784,6 +811,8 @@ document.addEventListener("change", e => {
   else if (t.id === "merge"){ settings.merge = t.checked; saveAll(); render(); }
   else if (t.id === "hideSport"){ settings.hideSport = t.checked; saveAll(); currentClusters(); render(); }
   else if (t.id === "proxySel"){ settings.proxy = t.value; saveAll(); render(); }
+  else if (t.id === "openSel"){ settings.open = t.value; saveAll(); render(); }
+  else if (t.id === "openTpl"){ settings.openTpl = t.value.trim(); saveAll(); render(); }
   else if (t.id === "customProxy"){ settings.customProxy = t.value.trim(); saveAll(); }
 });
 document.addEventListener("submit", async e => {
