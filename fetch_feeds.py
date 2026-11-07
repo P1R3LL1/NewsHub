@@ -151,6 +151,108 @@ for f in feeds.values():
         time.sleep(0.4)
 print("Google-Links: %d neu aufgelöst, %d nicht auflösbar" % (resolved, failed))
 
+# ---------- Startseiten auslesen ----------
+# Die Feeds von Zeit und SZ enthalten nur die 15 neuesten Meldungen, nicht die Aufmacher.
+# Darum werden die Startseiten gelesen: Reihenfolge = "Top"-Rang. Artikel, die in keinem
+# Feed stehen, werden mit Überschrift und Teaser aus ihren og:-Metadaten ergänzt.
+HOMEPAGES = [
+    # (Feed-Adresse der Quelle, Startseite, Muster für Artikeladressen)
+    ("https://newsfeed.zeit.de/index", "https://www.zeit.de/index",
+     r"^https://www\.zeit\.de/(?:[a-z0-9-]+/)*(?:20\d\d-\d\d|20\d\d/\d\d)/[a-z0-9-]{8,}$"),
+    ("https://rss.sueddeutsche.de/rss/Topthemen", "https://www.sueddeutsche.de/",
+     r"^https://www\.sueddeutsche\.de/[a-z0-9/-]+-(?:li|szm)\.\d+$"),
+    ("https://www.spiegel.de/schlagzeilen/index.rss", "https://www.spiegel.de/",
+     r"^https://www\.spiegel\.de/[a-z0-9/-]+-a-[0-9a-f-]{36}$"),
+    ("https://www.tagesschau.de/index~rss2.xml", "https://www.tagesschau.de/",
+     r"^https://www\.tagesschau\.de/(?:[a-z0-9-]+/)+[a-z0-9-]+-\d+\.html$"),
+]
+TOP_N = 30
+BROWSER_HEADERS = {"Accept": "text/html,application/xhtml+xml", "Accept-Language": "de-DE,de;q=0.9"}
+
+meta_cache = {}
+try:
+    for f in prev.get("feeds", {}).values():
+        for it in f.get("items", []) or []:
+            if it.get("hp"):
+                meta_cache[it["link"]] = it
+except NameError:
+    pass
+
+def norm_path(u):
+    try:
+        p = urllib.parse.urlsplit(u)
+        return (p.netloc.replace("www.", ""), p.path.rstrip("/"))
+    except Exception:
+        return u
+
+def meta(h, *names):
+    for n in names:
+        m = (re.search(r'<meta[^>]+(?:property|name)=["\']%s["\'][^>]*content=["\']([^"\']*)' % re.escape(n), h, re.I)
+             or re.search(r'<meta[^>]+content=["\']([^"\']*)["\'][^>]*(?:property|name)=["\']%s["\']' % re.escape(n), h, re.I))
+        if m and m.group(1).strip():
+            return html.unescape(m.group(1).strip())
+    return ""
+
+def article_meta(url):
+    h = http(url, headers=BROWSER_HEADERS)
+    title = meta(h, "og:title", "twitter:title")
+    if not title:
+        return None
+    title = re.sub(r"\s*[|–-]\s*(ZEIT ONLINE|DIE ZEIT|SZ\.de|Süddeutsche Zeitung|DER SPIEGEL|tagesschau\.de)\s*$", "", title)
+    date = meta(h, "article:published_time", "date", "og:article:published_time")
+    if not date:
+        m = re.search(r'"datePublished"\s*:\s*"([^"]+)"', h)
+        date = m.group(1) if m else ""
+    sec = meta(h, "article:section")
+    return {"title": title, "teaser": meta(h, "og:description", "description")[:260], "link": url,
+            "date": parse_date(date), "cats": [sec.lower()] if sec else [], "via": "", "hp": True}
+
+homepages = {}
+for feed_url, home, pattern in HOMEPAGES:
+    info = {"ok": False}
+    try:
+        page = http(home, headers=BROWSER_HEADERS)
+        rx, seen, links = re.compile(pattern), set(), []
+        for href in re.findall(r'href=["\']([^"\'#?]+)', page):
+            u = urllib.parse.urljoin(home, html.unescape(href)).rstrip("/")
+            if rx.match(u) and norm_path(u) not in seen:
+                seen.add(norm_path(u)); links.append(u)
+            if len(links) >= TOP_N:
+                break
+        f = feeds.get(feed_url)
+        if f is None or not f["ok"]:
+            f = feeds[feed_url] = {"ok": True, "items": []}
+        by_path = {norm_path(it["link"]): it for it in f["items"]}
+        for other in feeds.values():            # auch in anderen Feeds derselben Seite suchen (z. B. Ressort-Feeds)
+            for it in other.get("items", []) if other.get("ok") else []:
+                by_path.setdefault(norm_path(it["link"]), it)
+        missing = [u for u in links if norm_path(u) not in by_path]
+        new_meta = {}
+        to_fetch = [u for u in missing if u not in meta_cache]
+        def safe_meta(u):
+            try:
+                return article_meta(u)
+            except Exception:
+                return None
+        with ThreadPoolExecutor(6) as pool:
+            for u, m in zip(to_fetch, pool.map(safe_meta, to_fetch)):
+                if m:
+                    new_meta[u] = m
+        added = 0
+        for rank, u in enumerate(links, 1):
+            it = by_path.get(norm_path(u))
+            if it is None:
+                m = new_meta.get(u) or meta_cache.get(u)
+                if not m:
+                    continue
+                it = dict(m); f["items"].append(it); by_path[norm_path(u)] = it; added += 1
+            it["top"] = rank
+        info = {"ok": True, "links": len(links), "inFeeds": len(links) - len(missing), "added": added}
+    except Exception as ex:
+        info["error"] = str(ex)[:160]
+    homepages[home] = info
+    print("Startseite", home, info)
+
 out_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 with open(out_dir + "/feeds.json", "w", encoding="utf-8") as fh:
-    json.dump({"at": int(time.time() * 1000), "feeds": feeds}, fh, ensure_ascii=False, separators=(",", ":"))
+    json.dump({"at": int(time.time() * 1000), "feeds": feeds, "homepages": homepages}, fh, ensure_ascii=False, separators=(",", ":"))

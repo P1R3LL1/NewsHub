@@ -85,12 +85,23 @@ main .wrap{padding-block:6px 24px;display:flex;flex-direction:column;gap:10px}
 .pin{width:36px;height:36px;margin:-10px -8px -10px 0;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--muted)}
 .pin svg{width:19px;height:19px}
 .pin[aria-pressed="true"]{color:var(--accent)}
+.more{width:36px;height:36px;margin:-10px -4px -10px 0;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--muted)}
+.more svg{width:18px;height:18px}
+.sheet-bg{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.35)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:46;background:var(--surface);border-radius:16px 16px 0 0;border-top:1px solid var(--line);
+  padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));max-width:680px;margin:0 auto}
+.sheet h3{margin:0 0 4px;font:600 16px/1.3 var(--f-head)}
+.sheet .sub{color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.sheet a{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-top:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:500}
+.sheet a small{color:var(--muted);font-weight:400}
+.sheet button{margin-top:10px;width:100%}
 .card h2{margin:8px 0 0;font:600 19px/1.25 var(--f-head);text-wrap:balance;letter-spacing:-.005em}
 .card h2 a{color:inherit;text-decoration:none}
 .card p{margin:6px 0 0;color:var(--muted);font-size:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .srcs{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
 .src{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12.5px;font-weight:500;text-decoration:none;color:var(--ink);background:var(--bg)}
 .src time{font:500 11px var(--f-mono);color:var(--muted)}
+.topb{font:600 10px var(--f-mono);letter-spacing:.06em;color:var(--accent-ink);background:var(--accent);border-radius:4px;padding:2px 5px}
 .multi{font:500 11px var(--f-mono);color:var(--accent);letter-spacing:.04em}
 .foot{margin-top:8px;font:500 11px var(--f-mono);color:var(--muted);display:flex;gap:6px}
 .empty{padding:48px 8px;text-align:center;color:var(--muted)}
@@ -179,6 +190,8 @@ main .wrap{padding-block:6px 24px;display:flex;flex-direction:column;gap:10px}
   </div>
 </nav>
 
+<div class="sheet-bg" id="sheetBg" hidden></div>
+<div class="sheet" id="sheet" hidden role="dialog" aria-label="Öffnen mit"></div>
 <div class="toast" id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastUndo">Rückgängig</button></div>
 
 <script>
@@ -333,7 +346,7 @@ function finalize(r, src){
     if (teaser.startsWith(title)) teaser = "";
   }
   if (teaser && teaser.toLowerCase() === title.toLowerCase()) teaser = "";
-  return {title, teaser, link, date: date || Date.now(), src:src.id, srcName:src.name, via, cat: detectCat(src, link, r.cats || [])};
+  return {title, teaser, link, date: date || Date.now(), src:src.id, srcName:src.name, via, top: r.top || 0, cat: detectCat(src, link, r.cats || [])};
 }
 async function loadSnapshot(){
   try{
@@ -451,7 +464,8 @@ function cluster(items){
     const cat = Object.keys(counts).sort((a,b) => counts[b] - counts[a])[0];
     const seen = new Set();
     const list = its.filter(x => { const k = x.src + (x.via || ""); if (seen.has(k)) return false; seen.add(k); return true; });
-    clusters.push({id: its.map(x => x.link).sort()[0], title, teaser, cat, date: its[0].date, items: list.map(x => ({link:x.link, name: x.via ? x.via : x.srcName, date:x.date}))});
+    const tops = its.map(x => x.top).filter(Boolean);
+    clusters.push({id: its.map(x => x.link).sort()[0], title, teaser, cat, date: its[0].date, top: tops.length ? Math.min(...tops) : 0, items: list.map(x => ({link:x.link, name: x.via ? x.via : x.srcName, date:x.date}))});
   }
   return clusters.sort((a,b) => b.date - a.date);
 }
@@ -511,14 +525,18 @@ const OPENERS = {
   removepaywall: {label:"RemovePaywall",  note:"Öffnet den Artikel über removepaywall.com", direct: u => "https://www.removepaywall.com/search?url=" + u},
   unwall:        {label:"unwall.app",     note:"Öffnet den Artikel über unwall.app", direct: u => "https://unwall.app/" + u.replace(/^https?:\/\//, "")},
   paywallskipper:{label:"Paywall Skipper",note:"Öffnet den Artikel über paywallskipper.com", direct: u => "https://paywallskipper.com/r?url=" + encodeURIComponent(u)},
+  smry:          {label:"smry.ai",        note:"Öffnet den Artikel über smry.ai", direct: u => "https://smry.ai/" + u},
   custom:        {label:"Eigene Vorlage", note:"Eigene Adresse mit {url} als Platzhalter"}
 };
-function openUrl(u){
+/* Seiten, bei denen im Test (Nov. 2026) kein Dienst funktioniert hat: die öffnen immer direkt */
+const NO_BYPASS = /(^|\.)zeit\.de$/;
+function openUrl(u, via){
   if (/^https:\/\/news\.google\./.test(u)) return u;          // nicht aufgelöste Google-Weiterleitung: direkt öffnen
-  const o = OPENERS[settings.open] || OPENERS.original;
+  if (!via){ try{ if (NO_BYPASS.test(new URL(u).hostname)) return u; }catch(e){} }
+  const o = OPENERS[via || settings.open] || OPENERS.original;
   if (o.direct) return o.direct(u);
   if (o.copy) return o.copy;
-  if (settings.open === "custom" && settings.openTpl.includes("{url}")) return settings.openTpl.replace("{url}", encodeURIComponent(u)).replace("{rawurl}", u);
+  if ((via || settings.open) === "custom" && settings.openTpl.includes("{url}")) return settings.openTpl.replace("{url}", encodeURIComponent(u)).replace("{rawurl}", u);
   return u;
 }
 function ago(t){
@@ -530,7 +548,7 @@ function ago(t){
 function currentClusters(){
   const minDate = Date.now() - settings.hours * 3600e3;
   const activeIds = new Set(sources.filter(s => s.on).map(s => s.id));
-  const items = cache.items.filter(i => i.date >= minDate && activeIds.has(i.src) && i.date <= Date.now() + 3600e3);
+  const items = cache.items.filter(i => (i.date >= minDate || i.top) && activeIds.has(i.src) && i.date <= Date.now() + 3600e3);
   const read = readLinks();
   let kept = items;
   if (settings.hideSport){ kept = items.filter(i => !isSport(i)); state.sportHidden = items.length - kept.length; } else state.sportHidden = 0;
@@ -547,7 +565,8 @@ function cardHTML(c, mode){
   return `<div class="slot" data-id="${esc(c.id)}">
     <div class="under"><span>${mode === "feed" ? "Ausblenden" : "Entfernen"}</span><span>${mode === "feed" ? "Ausblenden" : "Entfernen"}</span></div>
     <article class="card" style="--cat:${CAT_VAR(c.cat)}">
-      <div class="meta"><span class="cat">${esc(c.cat)}</span>${multi ? `<span class="multi">${c.items.length} Quellen</span>` : `<span>${esc(c.items[0].name)}</span>`}<span class="sp"></span>${mode === "read" ? `<span class="read-at">gelesen ${new Date(c.readAt).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"})}</span>` : `<span>${ago(c.date)}</span>`}
+      <div class="meta"><span class="cat">${esc(c.cat)}</span>${c.top && c.top <= 10 ? '<span class="topb" title="Aufmacher auf der Startseite">Top</span>' : ""}${multi ? `<span class="multi">${c.items.length} Quellen</span>` : `<span>${esc(c.items[0].name)}</span>`}<span class="sp"></span>${mode === "read" ? `<span class="read-at">gelesen ${new Date(c.readAt).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"})}</span>` : `<span>${ago(c.date)}</span>`}
+        <button class="more" aria-label="Öffnen mit …"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
         <button class="pin" aria-pressed="${pinned}" aria-label="${pinned ? "Nicht mehr merken" : "Für später merken"}">${pinned ? PIN_ICON_ON : PIN_ICON}</button></div>
       <h2><a href="${esc(openUrl(c.items[0].link))}" data-u="${esc(c.items[0].link)}" target="_blank" rel="noopener">${esc(c.title)}</a></h2>
       ${c.teaser ? `<p>${esc(c.teaser)}</p>` : ""}
@@ -559,15 +578,18 @@ let lastClusters = [];
 function renderChips(){
   const list = state.view === "pins" ? pins : state.view === "read" ? readList : lastClusters;
   const counts = {}; list.forEach(c => counts[c.cat] = (counts[c.cat] || 0) + 1);
-  const cats = ["Alle", ...CATS.filter(c => counts[c])];
+  const topN = list.filter(c => c.top).length;
+  const cats = ["Alle", ...(topN ? ["Top"] : []), ...CATS.filter(c => counts[c])];
+  counts.Top = topN;
   if (!cats.includes(state.cat)) state.cat = "Alle";
-  $("chips").innerHTML = cats.map(c => `<button class="chip" aria-pressed="${state.cat === c}" data-cat="${esc(c)}" style="--cat:${c === "Alle" ? "var(--muted)" : CAT_VAR(c)}">${c === "Alle" ? "" : '<span class="dot"></span>'}${esc(c)} <span class="n">${c === "Alle" ? list.length : counts[c]}</span></button>`).join("");
+  $("chips").innerHTML = cats.map(c => `<button class="chip" aria-pressed="${state.cat === c}" data-cat="${esc(c)}" style="--cat:${c === "Alle" ? "var(--muted)" : c === "Top" ? "var(--accent)" : CAT_VAR(c)}">${c === "Alle" ? "" : '<span class="dot"></span>'}${esc(c)} <span class="n">${c === "Alle" ? list.length : counts[c]}</span></button>`).join("");
   $("chips").parentElement.hidden = state.view === "settings";
 }
 function renderFeed(){
   lastClusters = currentClusters();
   renderChips();
-  const shown = lastClusters.filter(c => state.cat === "Alle" || c.cat === state.cat);
+  const shown = state.cat === "Top" ? lastClusters.filter(c => c.top).sort((a,b) => a.top - b.top)
+              : lastClusters.filter(c => state.cat === "Alle" || c.cat === state.cat);
   const v = $("view-feed");
   if (!shown.length){
     v.innerHTML = cache.at ? `<div class="empty"><b>Alles gelesen</b>Keine neuen Meldungen${state.cat !== "Alle" ? " in „" + esc(state.cat) + "“" : ""} aus den letzten ${settings.hours} Stunden.</div>`
@@ -578,7 +600,7 @@ function renderFeed(){
 }
 function renderPins(){
   renderChips();
-  const shown = pins.filter(c => state.cat === "Alle" || c.cat === state.cat).sort((a,b) => b.pinnedAt - a.pinnedAt);
+  const shown = pins.filter(c => state.cat === "Alle" || c.cat === state.cat || (state.cat === "Top" && c.top)).sort((a,b) => b.pinnedAt - a.pinnedAt);
   $("view-pins").innerHTML = shown.length ? shown.map(c => cardHTML(c, "pins")).join("")
     : '<div class="empty"><b>Noch nichts gemerkt</b>Tippe bei einer Meldung auf das Lesezeichen, um sie hier für später abzulegen.</div>';
 }
@@ -590,7 +612,7 @@ function dayLabel(t){
 }
 function renderRead(){
   renderChips();
-  const shown = readList.filter(c => state.cat === "Alle" || c.cat === state.cat).sort((a,b) => b.readAt - a.readAt);
+  const shown = readList.filter(c => state.cat === "Alle" || c.cat === state.cat || (state.cat === "Top" && c.top)).sort((a,b) => b.readAt - a.readAt);
   if (!shown.length){
     $("view-read").innerHTML = '<div class="empty"><b>Noch nichts gelesen</b>Tippst du unter „Aktuell“ auf eine Meldung, landet sie hier. Weggewischte Meldungen erscheinen hier nicht.</div>';
     return;
@@ -738,10 +760,23 @@ function removeAfterSwipe(slot, id){
   }, 260);
 }
 
+/* „Öffnen mit …“ */
+function openSheet(slot){
+  const c = findCluster(slot.dataset.id); if (!c) return;
+  const entries = [];
+  c.items.forEach(i => {
+    entries.push(`<div class="sub">${esc(i.name)}</div>` + Object.entries(OPENERS).filter(([k]) => k !== "custom" || settings.openTpl.includes("{url}"))
+      .map(([k,o]) => `<a href="${esc(openUrl(i.link, k))}" target="_blank" rel="noopener" data-id="${esc(c.id)}">${esc(o.label)}<small>${k === settings.open ? "Standard" : ""}</small></a>`).join(""));
+  });
+  $("sheet").innerHTML = `<h3>${esc(c.title)}</h3>${entries.join("")}<button class="btn ghost" id="sheetClose">Abbrechen</button>`;
+  $("sheet").hidden = false; $("sheetBg").hidden = false;
+}
+function closeSheet(){ $("sheet").hidden = true; $("sheetBg").hidden = true; }
+
 /* Wischen */
 let drag = null;
 document.addEventListener("pointerdown", e => {
-  const card = e.target.closest(".card"); if (!card || e.target.closest(".pin")) return;
+  const card = e.target.closest(".card"); if (!card || e.target.closest(".pin") || e.target.closest(".more")) return;
   drag = {card, slot: card.parentElement, x: e.clientX, y: e.clientY, dx: 0, active: false, id: e.pointerId, t: performance.now()};
 });
 document.addEventListener("pointermove", e => {
@@ -771,6 +806,9 @@ document.addEventListener("pointercancel", e => { if (drag && drag.active){ drag
 document.addEventListener("click", e => {
   const card = e.target.closest(".card");
   if (card && card.dataset.dragged){ e.preventDefault(); e.stopPropagation(); return; }
+  const more = e.target.closest(".more"); if (more){ openSheet(more.closest(".slot")); return; }
+  if (e.target.id === "sheetBg" || e.target.id === "sheetClose"){ closeSheet(); return; }
+  const sl = e.target.closest(".sheet a"); if (sl){ const slot = document.querySelector('.slot[data-id="' + CSS.escape(sl.dataset.id) + '"]'); closeSheet(); if (slot) markRead(sl.dataset.id, slot); return; }
   const pin = e.target.closest(".pin"); if (pin){ togglePin(pin.closest(".slot").dataset.id); return; }
   if (card && !e.target.closest("a")){ card.querySelector("h2 a").click(); return; }
   const link = e.target.closest(".card a"); if (link){
