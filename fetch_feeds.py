@@ -172,7 +172,8 @@ for feed_url, (domain, suffix) in EXTRA_GN.items():
     extra = 0
     for it in zg["items"]:
         u = urllib.parse.urlsplit(it["link"])
-        if u.netloc.endswith(domain) and u.path.rstrip("/") not in have:
+        # nur echte Artikel der Hauptseite (keine Anmelde-Weiterleitungen, Immobilien- oder Jobportale)
+        if u.netloc == "www." + domain and u.path.rstrip("/") not in have and len(u.path) > 20:
             it["title"] = re.sub(suffix, "", re.sub(r"\s+-\s+[^-]{2,40}$", lambda m: m.group(0) if not re.search(suffix, m.group(0), re.I) else "", it["title"]), flags=re.I)
             it["via"] = ""
             if it["teaser"].startswith(it["title"][:30]): it["teaser"] = ""
