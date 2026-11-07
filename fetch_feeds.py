@@ -257,10 +257,11 @@ for feed_url, home, pattern in HOMEPAGES:
             except Exception as ex:
                 errs.append(str(ex)[:60] + " " + u[-60:])
                 return None
-        with ThreadPoolExecutor(6) as pool:
-            for u, m in zip(to_fetch, pool.map(safe_meta, to_fetch)):
-                if m:
-                    new_meta[u] = m
+        for u in to_fetch:                     # nacheinander, sonst sperrt z. B. sz.de mit 403
+            m = safe_meta(u)
+            if m:
+                new_meta[u] = m
+            time.sleep(1.2)
         added = 0
         for rank, u in enumerate(links, 1):
             it = by_path.get(norm_path(u))
