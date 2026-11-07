@@ -9,6 +9,12 @@ block = src[src.index("const DEFAULT_SOURCES"):src.index("];", src.index("const 
 urls = re.findall(r'url:"([^"]+)"', block)
 for q in re.findall(r'url:GN\("([^"]+)"\)', block):
     urls.append("https://news.google.com/rss/search?q=" + urllib.parse.quote(q, safe="-_.!~*'()") + "&hl=de&gl=DE&ceid=DE:de")
+# Zusatzquelle für die Zeit: zeit.de sperrt Abrufe der GitHub-Server (403), und der Zeit-Feed
+# enthält nur 15 Meldungen. Google News liefert die aktuellen zeit.de-Artikel; sie werden
+# unten in den Zeit-Feed übernommen.
+ZEIT_FEED = "https://newsfeed.zeit.de/index"
+ZEIT_GN = "https://news.google.com/rss/search?q=" + urllib.parse.quote("site:zeit.de when:1d") + "&hl=de&gl=DE&ceid=DE:de"
+urls.append(ZEIT_GN)
 try:
     urls += [l.strip() for l in open("extra-feeds.txt", encoding="utf-8") if l.strip().startswith("http")]
 except FileNotFoundError:
@@ -151,6 +157,19 @@ for f in feeds.values():
         time.sleep(0.4)
 print("Google-Links: %d neu aufgelöst, %d nicht auflösbar" % (resolved, failed))
 
+# Google-News-Treffer von zeit.de in den Zeit-Feed übernehmen (ohne Doppelte)
+zg = feeds.pop(ZEIT_GN, None)
+if zg and zg["ok"] and ZEIT_FEED in feeds and feeds[ZEIT_FEED]["ok"]:
+    have = {urllib.parse.urlsplit(it["link"]).path.rstrip("/") for it in feeds[ZEIT_FEED]["items"]}
+    extra = 0
+    for it in zg["items"]:
+        u = urllib.parse.urlsplit(it["link"])
+        if u.netloc.endswith("zeit.de") and u.path.rstrip("/") not in have:
+            it["title"] = re.sub(r"\s+-\s+(DIE )?ZEIT( ONLINE)?$", "", it["title"], flags=re.I)
+            it["via"] = ""; it["teaser"] = "" if it["teaser"].startswith(it["title"][:30]) else it["teaser"]
+            feeds[ZEIT_FEED]["items"].append(it); have.add(u.path.rstrip("/")); extra += 1
+    print("Zeit: %d zusätzliche Artikel über Google News" % extra)
+
 # ---------- Startseiten auslesen ----------
 # Die Feeds von Zeit und SZ enthalten nur die 15 neuesten Meldungen, nicht die Aufmacher.
 # Darum werden die Startseiten gelesen: Reihenfolge = "Top"-Rang. Artikel, die in keinem
@@ -229,10 +248,14 @@ for feed_url, home, pattern in HOMEPAGES:
         missing = [u for u in links if norm_path(u) not in by_path]
         new_meta = {}
         to_fetch = [u for u in missing if u not in meta_cache]
+        errs = []
         def safe_meta(u):
             try:
-                return article_meta(u)
-            except Exception:
+                m = article_meta(u)
+                if not m: errs.append("keine og:-Daten " + u[-60:])
+                return m
+            except Exception as ex:
+                errs.append(str(ex)[:60] + " " + u[-60:])
                 return None
         with ThreadPoolExecutor(6) as pool:
             for u, m in zip(to_fetch, pool.map(safe_meta, to_fetch)):
@@ -247,7 +270,7 @@ for feed_url, home, pattern in HOMEPAGES:
                     continue
                 it = dict(m); f["items"].append(it); by_path[norm_path(u)] = it; added += 1
             it["top"] = rank
-        info = {"ok": True, "links": len(links), "inFeeds": len(links) - len(missing), "added": added}
+        info = {"ok": True, "links": len(links), "inFeeds": len(links) - len(missing), "added": added, "metaFailed": len(errs), "errors": errs[:3]}
     except Exception as ex:
         info["error"] = str(ex)[:160]
     homepages[home] = info
