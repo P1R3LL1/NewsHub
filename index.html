@@ -526,6 +526,7 @@ const OPENERS = {
   auto:          {label:"Automatisch",    note:"Bezahlartikel (Zeit, Spiegel, SZ, heise …) über archive.is, alles andere im Original"},
   original:      {label:"Originalseite",  note:"Öffnet die Seite der Quelle"},
   archive:       {label:"archive.is",     note:"Öffnet die neueste archivierte Kopie auf archive.is", direct: u => "https://archive.is/newest/" + u},
+  archivenew:    {label:"archive.is – neue Kopie anlegen", note:"Öffnet archive.is mit eingetragener Adresse, dort „speichern“ tippen", menuOnly:true, direct: u => "https://archive.is/?url=" + u},
   removepaywall: {label:"RemovePaywall",  note:"Öffnet den Artikel über removepaywall.com", direct: u => "https://www.removepaywall.com/search?url=" + u},
   unwall:        {label:"unwall.app",     note:"Öffnet den Artikel über unwall.app", direct: u => "https://unwall.app/" + u.replace(/^https?:\/\//, "")},
   paywallskipper:{label:"Paywall Skipper",note:"Öffnet den Artikel über paywallskipper.com", direct: u => "https://paywallskipper.com/r?url=" + encodeURIComponent(u)},
@@ -535,7 +536,11 @@ const OPENERS = {
 function openUrl(u, via){
   if (/^https:\/\/news\.google\./.test(u)) return u;          // nicht aufgelöste Google-Weiterleitung: direkt öffnen
   let mode = via || settings.open;
-  if (mode === "auto"){ let h = ""; try{ h = new URL(u).hostname; }catch(e){} mode = PAYWALL_SITES.test(h) ? "archive" : "original"; }
+  if (mode === "auto"){
+    let h = "", p = ""; try{ const x = new URL(u); h = x.hostname; p = x.pathname; }catch(e){}
+    const free = /(^|\.)zeit\.de$/.test(h) && /^\/news\//.test(p);      // dpa-Meldungen der Zeit sind frei
+    mode = PAYWALL_SITES.test(h) && !free ? "archive" : "original";
+  }
   const o = OPENERS[mode] || OPENERS.original;
   if (o.direct) return o.direct(u);
   if (o.copy) return o.copy;
@@ -670,7 +675,7 @@ function renderSettings(status){
   <div class="sect"><h3>Beim Antippen öffnen</h3><div class="group">
     <div class="row"><div class="lbl">Ziel<small>${esc((OPENERS[settings.open] || OPENERS.original).note)}</small></div>
       <select id="openSel" aria-label="Ziel beim Antippen" style="padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);max-width:48%">
-        ${Object.entries(OPENERS).map(([k,o]) => `<option value="${k}" ${settings.open === k ? "selected" : ""}>${o.label}</option>`).join("")}
+        ${Object.entries(OPENERS).filter(([k,o]) => !o.menuOnly).map(([k,o]) => `<option value="${k}" ${settings.open === k ? "selected" : ""}>${o.label}</option>`).join("")}
       </select></div>
     <div class="row" ${settings.open === "custom" ? "" : "hidden"}><input id="openTpl" autocapitalize="off" inputmode="url" style="flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px" placeholder="https://beispiel.de/?url={url}" value="${esc(settings.openTpl)}"></div>
   </div></div>
