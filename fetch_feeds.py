@@ -12,9 +12,15 @@ for q in re.findall(r'url:GN\("([^"]+)"\)', block):
 # Zusatzquelle für die Zeit: zeit.de sperrt Abrufe der GitHub-Server (403), und der Zeit-Feed
 # enthält nur 15 Meldungen. Google News liefert die aktuellen zeit.de-Artikel; sie werden
 # unten in den Zeit-Feed übernommen.
-ZEIT_FEED = "https://newsfeed.zeit.de/index"
-ZEIT_GN = "https://news.google.com/rss/search?q=" + urllib.parse.quote("site:zeit.de when:1d") + "&hl=de&gl=DE&ceid=DE:de"
-urls.append(ZEIT_GN)
+# Gleiches für die SZ, deren Artikelseiten den Abruf teilweise sperren.
+EXTRA_GN = {
+    "https://newsfeed.zeit.de/index": ("zeit.de", r"\s+-\s+(DIE )?ZEIT( ONLINE)?$"),
+    "https://rss.sueddeutsche.de/rss/Topthemen": ("sueddeutsche.de", r"\s+-\s+(SZ\.de|Süddeutsche Zeitung)(\s+-\s+SZ\.de)?$"),
+}
+def gn_url(domain):
+    return "https://news.google.com/rss/search?q=" + urllib.parse.quote("site:%s when:1d" % domain) + "&hl=de&gl=DE&ceid=DE:de"
+for _d, _ in EXTRA_GN.values():
+    urls.append(gn_url(_d))
 try:
     urls += [l.strip() for l in open("extra-feeds.txt", encoding="utf-8") if l.strip().startswith("http")]
 except FileNotFoundError:
@@ -157,18 +163,21 @@ for f in feeds.values():
         time.sleep(0.4)
 print("Google-Links: %d neu aufgelöst, %d nicht auflösbar" % (resolved, failed))
 
-# Google-News-Treffer von zeit.de in den Zeit-Feed übernehmen (ohne Doppelte)
-zg = feeds.pop(ZEIT_GN, None)
-if zg and zg["ok"] and ZEIT_FEED in feeds and feeds[ZEIT_FEED]["ok"]:
-    have = {urllib.parse.urlsplit(it["link"]).path.rstrip("/") for it in feeds[ZEIT_FEED]["items"]}
+# Google-News-Treffer in den Feed der jeweiligen Quelle übernehmen (ohne Doppelte)
+for feed_url, (domain, suffix) in EXTRA_GN.items():
+    zg = feeds.pop(gn_url(domain), None)
+    if not (zg and zg["ok"] and feed_url in feeds and feeds[feed_url]["ok"]):
+        continue
+    have = {urllib.parse.urlsplit(it["link"]).path.rstrip("/") for it in feeds[feed_url]["items"]}
     extra = 0
     for it in zg["items"]:
         u = urllib.parse.urlsplit(it["link"])
-        if u.netloc.endswith("zeit.de") and u.path.rstrip("/") not in have:
-            it["title"] = re.sub(r"\s+-\s+(DIE )?ZEIT( ONLINE)?$", "", it["title"], flags=re.I)
-            it["via"] = ""; it["teaser"] = "" if it["teaser"].startswith(it["title"][:30]) else it["teaser"]
-            feeds[ZEIT_FEED]["items"].append(it); have.add(u.path.rstrip("/")); extra += 1
-    print("Zeit: %d zusätzliche Artikel über Google News" % extra)
+        if u.netloc.endswith(domain) and u.path.rstrip("/") not in have:
+            it["title"] = re.sub(suffix, "", re.sub(r"\s+-\s+[^-]{2,40}$", lambda m: m.group(0) if not re.search(suffix, m.group(0), re.I) else "", it["title"]), flags=re.I)
+            it["via"] = ""
+            if it["teaser"].startswith(it["title"][:30]): it["teaser"] = ""
+            feeds[feed_url]["items"].append(it); have.add(u.path.rstrip("/")); extra += 1
+    print("%s: %d zusätzliche Artikel über Google News" % (domain, extra))
 
 # ---------- Startseiten auslesen ----------
 # Die Feeds von Zeit und SZ enthalten nur die 15 neuesten Meldungen, nicht die Aufmacher.
