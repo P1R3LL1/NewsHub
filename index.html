@@ -230,7 +230,7 @@ const store = {
   set(k, v){ try{ localStorage.setItem("lagebild:" + k, JSON.stringify(v)); }catch(e){} }
 };
 let settings = Object.assign({theme:"system", open:"original", hours:24, merge:true, hideSport:true, proxy:"auto", customProxy:"", openTpl:""}, store.get("settings", {}));
-if (settings.open === "archive") settings.open = "original";   // archive.ph wurde entfernt
+if (!settings.openV2){ settings.open = "auto"; settings.openV2 = true; try{ localStorage.setItem("lagebild:settings", JSON.stringify(settings)); }catch(e){} }
 let sources = store.get("sources", null) || DEFAULT_SOURCES.map(s => ({...s}));
 let dismissed = store.get("dismissed", {});          // link -> Zeitstempel
 let pins = store.get("pins", []);                     // gespeicherte Cluster
@@ -520,23 +520,26 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">"
 /* Google-News-Weiterleitungen, die nicht aufgelöst werden konnten, kann archive.ph nicht laden – die öffnen direkt */
 /* Ziele beim Antippen. "direct": Artikeladresse wird übergeben. "copy": Dienst bietet keinen Direktlink –
    die App kopiert die Adresse in die Zwischenablage und öffnet die Startseite des Dienstes. */
+/* Seiten mit Bezahlschranke, bei denen archive.is im Test (Nov. 2026) den vollen Text lieferte */
+const PAYWALL_SITES = /(^|\.)(zeit|spiegel|sueddeutsche|heise|faz|handelsblatt|welt|tagesspiegel|wiwo|manager-magazin|golem)\.de$/;
 const OPENERS = {
+  auto:          {label:"Automatisch",    note:"Bezahlartikel (Zeit, Spiegel, SZ, heise …) über archive.is, alles andere im Original"},
   original:      {label:"Originalseite",  note:"Öffnet die Seite der Quelle"},
+  archive:       {label:"archive.is",     note:"Öffnet die neueste archivierte Kopie auf archive.is", direct: u => "https://archive.is/newest/" + u},
   removepaywall: {label:"RemovePaywall",  note:"Öffnet den Artikel über removepaywall.com", direct: u => "https://www.removepaywall.com/search?url=" + u},
   unwall:        {label:"unwall.app",     note:"Öffnet den Artikel über unwall.app", direct: u => "https://unwall.app/" + u.replace(/^https?:\/\//, "")},
   paywallskipper:{label:"Paywall Skipper",note:"Öffnet den Artikel über paywallskipper.com", direct: u => "https://paywallskipper.com/r?url=" + encodeURIComponent(u)},
   smry:          {label:"smry.ai",        note:"Öffnet den Artikel über smry.ai", direct: u => "https://smry.ai/" + u},
   custom:        {label:"Eigene Vorlage", note:"Eigene Adresse mit {url} als Platzhalter"}
 };
-/* Seiten, bei denen im Test (Nov. 2026) kein Dienst funktioniert hat: die öffnen immer direkt */
-const NO_BYPASS = /(^|\.)zeit\.de$/;
 function openUrl(u, via){
   if (/^https:\/\/news\.google\./.test(u)) return u;          // nicht aufgelöste Google-Weiterleitung: direkt öffnen
-  if (!via){ try{ if (NO_BYPASS.test(new URL(u).hostname)) return u; }catch(e){} }
-  const o = OPENERS[via || settings.open] || OPENERS.original;
+  let mode = via || settings.open;
+  if (mode === "auto"){ let h = ""; try{ h = new URL(u).hostname; }catch(e){} mode = PAYWALL_SITES.test(h) ? "archive" : "original"; }
+  const o = OPENERS[mode] || OPENERS.original;
   if (o.direct) return o.direct(u);
   if (o.copy) return o.copy;
-  if ((via || settings.open) === "custom" && settings.openTpl.includes("{url}")) return settings.openTpl.replace("{url}", encodeURIComponent(u)).replace("{rawurl}", u);
+  if (mode === "custom" && settings.openTpl.includes("{url}")) return settings.openTpl.replace("{url}", encodeURIComponent(u)).replace("{rawurl}", u);
   return u;
 }
 function ago(t){
@@ -765,7 +768,7 @@ function openSheet(slot){
   const c = findCluster(slot.dataset.id); if (!c) return;
   const entries = [];
   c.items.forEach(i => {
-    entries.push(`<div class="sub">${esc(i.name)}</div>` + Object.entries(OPENERS).filter(([k]) => k !== "custom" || settings.openTpl.includes("{url}"))
+    entries.push(`<div class="sub">${esc(i.name)}</div>` + Object.entries(OPENERS).filter(([k]) => k !== "auto" && (k !== "custom" || settings.openTpl.includes("{url}")))
       .map(([k,o]) => `<a href="${esc(openUrl(i.link, k))}" target="_blank" rel="noopener" data-id="${esc(c.id)}">${esc(o.label)}<small>${k === settings.open ? "Standard" : ""}</small></a>`).join(""));
   });
   $("sheet").innerHTML = `<h3>${esc(c.title)}</h3>${entries.join("")}<button class="btn ghost" id="sheetClose">Abbrechen</button>`;
