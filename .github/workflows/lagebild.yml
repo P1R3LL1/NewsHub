@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.deploy_first.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - name: Feeds holen
@@ -32,5 +32,14 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+      # Veröffentlichen: GitHub findet das Paket gelegentlich nicht sofort.
+      # Dann nach einer Minute ein zweiter Versuch, statt den Lauf scheitern zu lassen.
+      - id: deploy_first
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - name: Kurz warten
+        if: steps.deploy_first.outcome == 'failure'
+        run: sleep 60
       - id: deploy
+        if: steps.deploy_first.outcome == 'failure'
         uses: actions/deploy-pages@v4
